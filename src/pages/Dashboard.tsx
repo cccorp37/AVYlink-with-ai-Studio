@@ -133,7 +133,26 @@ const Dashboard = () => {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
-      const list = data || [];
+      
+      let list = data || [];
+      
+      // If user is admin, force plan to business for all their profiles
+      if (user.email?.toLowerCase() === "avydigitalbusiness@gmail.com") {
+        list = list.map(p => ({ ...p, plan: "business" }));
+        
+        // If no profiles exist, create a virtual one for immediate access
+        if (list.length === 0) {
+          list = [{
+            id: "admin-virtual-profile",
+            user_id: user.id,
+            username: "admin",
+            display_name: "Admin Profile",
+            plan: "business",
+            created_at: new Date().toISOString()
+          } as any];
+        }
+      }
+      
       setProfiles(list);
       // Restore last active or pick first
       const stored = localStorage.getItem("avylink_active_profile");
@@ -173,7 +192,11 @@ const Dashboard = () => {
       .select()
       .single();
     if (data) {
-      setProfiles((prev) => prev.map((p) => (p.id === data.id ? data : p)));
+      let updatedData = data;
+      if (user?.email?.toLowerCase() === "avydigitalbusiness@gmail.com") {
+        updatedData = { ...data, plan: "business" };
+      }
+      setProfiles((prev) => prev.map((p) => (p.id === updatedData.id ? updatedData : p)));
     }
   };
 

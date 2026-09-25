@@ -28,6 +28,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        // Alias uid to id for compatibility with components written for Supabase
+        (currentUser as any).id = currentUser.uid;
+      }
       setUser(currentUser);
       setLoading(false);
     });
@@ -40,6 +44,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return new Promise((resolve) => {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         unsubscribe();
+        if (currentUser) {
+          (currentUser as any).id = currentUser.uid;
+        }
         resolve(currentUser);
       });
     });

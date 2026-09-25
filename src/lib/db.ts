@@ -12,8 +12,11 @@ class FirebaseQueryBuilder {
   private isSingle = false;
   private limitCount = 0;
 
+  private selectOptions: any = null;
+
   select(fields?: string, options?: any) {
     this.action = 'select';
+    this.selectOptions = options;
     return this;
   }
 
@@ -44,12 +47,78 @@ class FirebaseQueryBuilder {
     return this;
   }
 
+  gte(column: string, value: any) {
+    this.conditions.push({ column, operator: '>=', value });
+    return this;
+  }
+
+  gt(column: string, value: any) {
+    this.conditions.push({ column, operator: '>', value });
+    return this;
+  }
+
+  lte(column: string, value: any) {
+    this.conditions.push({ column, operator: '<=', value });
+    return this;
+  }
+
+  lt(column: string, value: any) {
+    this.conditions.push({ column, operator: '<', value });
+    return this;
+  }
+
+  in(column: string, values: any[]) {
+    this.conditions.push({ column, operator: 'in', value: values });
+    return this;
+  }
+
+  is(column: string, value: any) {
+    this.conditions.push({ column, operator: '==', value });
+    return this;
+  }
+
+  contains(column: string, value: any) {
+    this.conditions.push({ column, operator: 'array-contains', value });
+    return this;
+  }
+
+  match(obj: Record<string, any>) {
+    if (obj && typeof obj === 'object') {
+      for (const [key, val] of Object.entries(obj)) {
+        this.eq(key, val);
+      }
+    }
+    return this;
+  }
+
+  filter(column: string, operator: string, value: any) {
+    let op = operator;
+    if (op === 'eq') op = '==';
+    else if (op === 'neq') op = '!=';
+    else if (op === 'gte') op = '>=';
+    else if (op === 'gt') op = '>';
+    else if (op === 'lte') op = '<=';
+    else if (op === 'lt') op = '<';
+    this.conditions.push({ column, operator: op, value });
+    return this;
+  }
+
+  range(from: number, to: number) {
+    this.limitCount = to - from + 1;
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }) {
     this.orderings.push({ column, direction: options?.ascending === false ? 'desc' : 'asc' });
     return this;
   }
 
   single() {
+    this.isSingle = true;
+    return this;
+  }
+  
+  maybeSingle() {
     this.isSingle = true;
     return this;
   }
@@ -64,22 +133,64 @@ class FirebaseQueryBuilder {
       const colRef = collection(db, this.table);
       
       if (this.action === 'select') {
-        let q = query(colRef);
         for (const cond of this.conditions) {
-          q = query(q, where(cond.column, cond.operator as any, cond.value));
+          if (cond.value === undefined) {
+            console.warn(`Firestore Query Builder: Undefined value for ${cond.column}. Returning empty result.`);
+            return this.isSingle ? { data: null, count: 0, error: null } : { data: [], count: 0, error: null };
+          }
         }
-        for (const ord of this.orderings) {
-          q = query(q, orderBy(ord.column, ord.direction));
+
+        let results: any[] = [];
+        try {
+          let q = query(colRef);
+          for (const cond of this.conditions) {
+            q = query(q, where(cond.column, cond.operator as any, cond.value));
+          }
+          for (const ord of this.orderings) {
+            q = query(q, orderBy(ord.column, ord.direction));
+          }
+          if (this.limitCount) {
+            q = query(q, limit(this.limitCount));
+          }
+          const snap = await getDocs(q);
+          results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (queryErr: any) {
+          console.warn("Firestore native query failed, running resilient client fallback:", queryErr?.message || queryErr);
+          // If query failed (e.g. missing composite index in Firestore),
+          // fallback to fetching docs and filtering in-memory
+          const fallbackSnap = await getDocs(colRef);
+          let allDocs = fallbackSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+          for (const cond of this.conditions) {
+            allDocs = allDocs.filter(doc => {
+              const val = doc[cond.column];
+              if (cond.operator === '==') return val === cond.value;
+              if (cond.operator === '!=') return val !== cond.value;
+              if (cond.operator === '>=') return val >= cond.value;
+              if (cond.operator === '>') return val > cond.value;
+              if (cond.operator === '<=') return val <= cond.value;
+              if (cond.operator === '<') return val < cond.value;
+              if (cond.operator === 'in') return Array.isArray(cond.value) && cond.value.includes(val);
+              if (cond.operator === 'array-contains') return Array.isArray(val) && val.includes(cond.value);
+              return true;
+            });
+          }
+          for (const ord of this.orderings) {
+            allDocs.sort((a, b) => {
+              if (a[ord.column] < b[ord.column]) return ord.direction === 'desc' ? 1 : -1;
+              if (a[ord.column] > b[ord.column]) return ord.direction === 'desc' ? -1 : 1;
+              return 0;
+            });
+          }
+          if (this.limitCount) {
+            allDocs = allDocs.slice(0, this.limitCount);
+          }
+          results = allDocs;
         }
-        if (this.limitCount) {
-          q = query(q, limit(this.limitCount));
-        }
-        const snap = await getDocs(q);
-        const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
         if (this.isSingle) {
-          return { data: results[0] || null, error: null };
+          return { data: results[0] || null, count: results.length ? 1 : 0, error: null };
         }
-        return { data: results, error: null };
+        return { data: results, count: results.length, error: null };
       }
       
       if (this.action === 'insert') {
@@ -99,6 +210,10 @@ class FirebaseQueryBuilder {
       if (this.action === 'update' || this.action === 'delete') {
         let q = query(colRef);
         for (const cond of this.conditions) {
+          if (cond.value === undefined) {
+            console.warn(`Firestore Query Builder: Undefined value for ${cond.column} in ${this.action}. Aborting.`);
+            return { data: null, error: null };
+          }
           q = query(q, where(cond.column, cond.operator as any, cond.value));
         }
         const snap = await getDocs(q);
@@ -147,16 +262,23 @@ export const firestoreDB = {
   auth: {
     getUser: async () => {
       const u = await waitForInitialAuth();
-      if (u) return { data: { user: u }, error: null };
+      if (u) {
+        (u as any).id = u.uid;
+        return { data: { user: u }, error: null };
+      }
       return { data: { user: null }, error: null };
     },
     getSession: async () => {
        const u = await waitForInitialAuth();
-       if (u) return { data: { session: { user: u } }, error: null };
+       if (u) {
+         (u as any).id = u.uid;
+         return { data: { session: { user: u } }, error: null };
+       }
        return { data: { session: null }, error: null };
     },
     onAuthStateChange: (cb: any) => {
        const unsub = auth.onAuthStateChanged(user => {
+          if (user) (user as any).id = user.uid;
           cb("STATE_CHANGE", user ? { user } : null);
        });
        return { data: { subscription: { unsubscribe: unsub } } };

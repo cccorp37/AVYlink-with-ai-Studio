@@ -15,6 +15,13 @@ export function useAdmin() {
       return;
     }
 
+    // Hardcoded admin email
+    if (user.email?.toLowerCase() === "avydigitalbusiness@gmail.com") {
+      setIsAdmin(true);
+      setLoading(false);
+      return;
+    }
+
     supabase
       .from("user_roles")
       .select("role")

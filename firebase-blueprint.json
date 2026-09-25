@@ -1,0 +1,308 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Public user profile and bio-link configuration",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "username": { "type": "string" },
+        "full_name": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "cover_url": { "type": "string" },
+        "theme": { "type": "string" },
+        "layout": { "type": "string" },
+        "is_verified": { "type": "boolean" },
+        "is_published": { "type": "boolean" },
+        "subscription_tier": { "type": "string" }
+      },
+      "required": ["user_id", "username"]
+    },
+    "ProfileLink": {
+      "title": "ProfileLink",
+      "description": "Links displayed on a user profile",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "profile_id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "position": { "type": "number" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["user_id", "title", "url"]
+    },
+    "PageBlock": {
+      "title": "PageBlock",
+      "description": "Custom content blocks on user profiles",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "profile_id": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "position": { "type": "number" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["user_id", "type"]
+    },
+    "PageView": {
+      "title": "PageView",
+      "description": "Analytics record for a profile page visit",
+      "type": "object",
+      "properties": {
+        "profile_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "visitor_id": { "type": "string" }
+      },
+      "required": ["profile_id"]
+    },
+    "LinkClick": {
+      "title": "LinkClick",
+      "description": "Analytics record for a link click",
+      "type": "object",
+      "properties": {
+        "link_id": { "type": "string" },
+        "profile_id": { "type": "string" },
+        "user_id": { "type": "string" }
+      },
+      "required": ["link_id"]
+    },
+    "FormSubmission": {
+      "title": "FormSubmission",
+      "description": "Submissions received from contact or custom forms",
+      "type": "object",
+      "properties": {
+        "profile_id": { "type": "string" },
+        "block_id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["profile_id"]
+    },
+    "Wallet": {
+      "title": "Wallet",
+      "description": "User balance and earnings wallet",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "balance": { "type": "number" },
+        "currency": { "type": "string" }
+      },
+      "required": ["user_id", "balance"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transactions via MeSomb (payment, withdrawal, top-up)",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "wallet_id": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string" },
+        "reference": { "type": "string" },
+        "payment_method": { "type": "string" },
+        "phone_number": { "type": "string" }
+      },
+      "required": ["user_id", "amount", "status", "reference"]
+    },
+    "WithdrawalNotification": {
+      "title": "WithdrawalNotification",
+      "description": "Withdrawal tracking notifications",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string" },
+        "service": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["user_id", "amount", "status"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Customer support requests and tickets",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "subject": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
+      },
+      "required": ["user_id", "subject", "description"]
+    },
+    "TicketReply": {
+      "title": "TicketReply",
+      "description": "Replies on support tickets",
+      "type": "object",
+      "properties": {
+        "ticket_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "message": { "type": "string" },
+        "is_staff": { "type": "boolean" }
+      },
+      "required": ["ticket_id", "user_id", "message"]
+    },
+    "AdminNotification": {
+      "title": "AdminNotification",
+      "description": "System-wide broadcast notifications",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["title", "message"]
+    },
+    "NotificationDismissal": {
+      "title": "NotificationDismissal",
+      "description": "User dismissals of admin notifications",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "notification_id": { "type": "string" }
+      },
+      "required": ["user_id", "notification_id"]
+    },
+    "StoreItem": {
+      "title": "StoreItem",
+      "description": "Digital products and store items",
+      "type": "object",
+      "properties": {
+        "profile_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["profile_id", "user_id", "title", "price"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Store purchases and orders",
+      "type": "object",
+      "properties": {
+        "seller_id": { "type": "string" },
+        "store_item_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "payment_status": { "type": "string" },
+        "transaction_id": { "type": "string" }
+      },
+      "required": ["store_item_id", "amount", "payment_status"]
+    },
+    "CustomTemplate": {
+      "title": "CustomTemplate",
+      "description": "User customized theme templates",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["user_id", "name"]
+    },
+    "ClickHeatmap": {
+      "title": "ClickHeatmap",
+      "description": "Heatmap analytics points for profile pages",
+      "type": "object",
+      "properties": {
+        "profile_id": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "required": ["profile_id", "x", "y"]
+    },
+    "WebhookEvent": {
+      "title": "WebhookEvent",
+      "description": "Idempotent event registry for external webhooks",
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string" },
+        "event_id": { "type": "string" },
+        "event_type": { "type": "string" },
+        "reference": { "type": "string" }
+      },
+      "required": ["provider", "event_id"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Profiles and user appearance settings"
+    },
+    "/profile_links/{linkId}": {
+      "schema": "ProfileLink",
+      "description": "User profile links"
+    },
+    "/page_blocks/{blockId}": {
+      "schema": "PageBlock",
+      "description": "Profile page blocks"
+    },
+    "/page_views/{viewId}": {
+      "schema": "PageView",
+      "description": "Visitor view analytics"
+    },
+    "/link_clicks/{clickId}": {
+      "schema": "LinkClick",
+      "description": "Link click metrics"
+    },
+    "/form_submissions/{submissionId}": {
+      "schema": "FormSubmission",
+      "description": "Contact form submissions"
+    },
+    "/wallets/{walletId}": {
+      "schema": "Wallet",
+      "description": "User monetary balances"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Payment transactions"
+    },
+    "/withdrawal_notifications/{notificationId}": {
+      "schema": "WithdrawalNotification",
+      "description": "Withdrawal history and alerts"
+    },
+    "/support_tickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "Support tickets"
+    },
+    "/ticket_replies/{replyId}": {
+      "schema": "TicketReply",
+      "description": "Replies for support tickets"
+    },
+    "/admin_notifications/{notificationId}": {
+      "schema": "AdminNotification",
+      "description": "Platform broadcast notifications"
+    },
+    "/notification_dismissals/{dismissalId}": {
+      "schema": "NotificationDismissal",
+      "description": "Dismissed notifications per user"
+    },
+    "/store_items/{itemId}": {
+      "schema": "StoreItem",
+      "description": "Monetized store items"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer purchase orders"
+    },
+    "/custom_templates/{templateId}": {
+      "schema": "CustomTemplate",
+      "description": "Custom templates"
+    },
+    "/click_heatmap/{heatmapId}": {
+      "schema": "ClickHeatmap",
+      "description": "Page click coordinates"
+    },
+    "/webhook_events/{eventId}": {
+      "schema": "WebhookEvent",
+      "description": "Processed webhook events"
+    }
+  }
+}

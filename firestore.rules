@@ -1,0 +1,187 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'avydigitalbusiness@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Profiles: publicly viewable, owner can manage
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Profile Links: publicly viewable, owner can manage
+    match /profile_links/{linkId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Page Blocks: publicly viewable, owner can manage
+    match /page_blocks/{blockId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Page Views: anyone can insert, owner/admin can read/delete
+    match /page_views/{viewId} {
+      allow create: if true;
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // Link Clicks: anyone can insert, owner/admin can read/delete
+    match /link_clicks/{clickId} {
+      allow create: if true;
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // Form Submissions: anyone can submit, owner/admin can read/delete
+    match /form_submissions/{submissionId} {
+      allow create: if true;
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // Click Heatmap: anyone can insert, owner/admin can read
+    match /click_heatmap/{heatmapId} {
+      allow create: if true;
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Wallets: owner or admin can read, managed by server/admin
+    match /wallets/{walletId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Transactions: owner or admin can read, user can insert own
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Withdrawal Notifications
+    match /withdrawal_notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.user_id == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Support Tickets
+    match /support_tickets/{ticketId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Ticket Replies
+    match /ticket_replies/{replyId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Admin Notifications: public read if active, admin manages
+    match /admin_notifications/{notificationId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Notification Dismissals
+    match /notification_dismissals/{dismissalId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    // App Settings
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Store Items: public read, owner can manage
+    match /store_items/{itemId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Orders: buyer, seller or admin can read
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.seller_id == request.auth.uid || resource.data.buyer_id == request.auth.uid || isAdmin());
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Custom Templates
+    match /custom_templates/{templateId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    // Team Members
+    match /team_members/{memberId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid || isAdmin());
+    }
+
+    // API Keys
+    match /api_keys/{keyId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Webhooks
+    match /webhooks/{webhookId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // A/B Tests
+    match /ab_tests/{testId} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // Webhook Events
+    match /webhook_events/{eventId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Admins registry
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Test connection doc (for connectivity validation)
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

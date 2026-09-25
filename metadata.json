@@ -1,0 +1,6 @@
+{
+  "name": "AvyLink — Ton univers en un seul lien",
+  "description": "Crée ta page de liens personnalisée en quelques minutes. Centralise tes réseaux sociaux, tes produits et ton contenu. Monétise ta présence en ligne avec AvyLink.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

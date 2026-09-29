@@ -135,29 +135,52 @@ const Dashboard = () => {
         .order("created_at", { ascending: true });
       
       let list = data || [];
+      const isAdmin = user.email?.toLowerCase() === "avydigitalbusiness@gmail.com";
       
-      // If user is admin, force plan to business for all their profiles
-      if (user.email?.toLowerCase() === "avydigitalbusiness@gmail.com") {
+      if (isAdmin) {
         list = list.map(p => ({ ...p, plan: "business" }));
-        
-        // If no profiles exist, create a virtual one for immediate access
-        if (list.length === 0) {
-          list = [{
-            id: "admin-virtual-profile",
-            user_id: user.id,
-            username: "admin",
-            display_name: "Admin Profile",
-            plan: "business",
-            created_at: new Date().toISOString()
-          } as any];
+      }
+
+      // If no profiles exist, create a real persisted profile in Firestore
+      if (list.length === 0) {
+        const defaultUsername = (user.email?.split("@")[0] || "user")
+          .replace(/[^a-zA-Z0-9_]/g, "")
+          .slice(0, 20) || "user";
+
+        const newInitial = {
+          user_id: user.id,
+          username: isAdmin ? "admin" : defaultUsername,
+          display_name: (user as any).user_metadata?.full_name || (isAdmin ? "Administrateur AvyLink" : "Mon Profil"),
+          bio: "Bienvenue sur ma page AvyLink ✨",
+          plan: isAdmin ? "business" : "free",
+          theme: "modern",
+          button_style: "rounded",
+          font_style: "inter",
+          is_verified: isAdmin,
+          verified_badge_style: "star",
+          created_at: new Date().toISOString(),
+        };
+
+        const { data: createdProf } = await supabase
+          .from("profiles")
+          .insert(newInitial)
+          .select()
+          .single();
+
+        if (createdProf) {
+          list = [createdProf as Profile];
         }
       }
       
       setProfiles(list);
       // Restore last active or pick first
       const stored = localStorage.getItem("avylink_active_profile");
-      const found = list.find((p) => p.id === stored);
-      setActiveProfileId(found?.id || list[0]?.id || null);
+      const found = list.find((p) => p.id === stored && p.id !== "admin-virtual-profile");
+      const activeId = found?.id || list[0]?.id || null;
+      setActiveProfileId(activeId);
+      if (activeId) {
+        localStorage.setItem("avylink_active_profile", activeId);
+      }
       setProfileLoading(false);
     };
     loadProfiles();
@@ -185,6 +208,10 @@ const Dashboard = () => {
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!profile) return;
+    const isAdmin = user?.email?.toLowerCase() === "avydigitalbusiness@gmail.com";
+    const optimistic = { ...profile, ...updates, ...(isAdmin ? { plan: "business" } : {}) };
+    setProfiles((prev) => prev.map((p) => (p.id === profile.id ? optimistic : p)));
+
     const { data } = await supabase
       .from("profiles")
       .update(updates)
@@ -193,7 +220,7 @@ const Dashboard = () => {
       .single();
     if (data) {
       let updatedData = data;
-      if (user?.email?.toLowerCase() === "avydigitalbusiness@gmail.com") {
+      if (isAdmin) {
         updatedData = { ...data, plan: "business" };
       }
       setProfiles((prev) => prev.map((p) => (p.id === updatedData.id ? updatedData : p)));

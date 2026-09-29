@@ -52,6 +52,8 @@ const App = () => {
                       element={<Navigate to="/dashboard/admin" replace />}
                     />
                     <Route path="/u/:username" element={<PublicProfile />} />
+                    <Route path="/@:username" element={<PublicProfile />} />
+                    <Route path="/p/:username" element={<PublicProfile />} />
                     <Route path="/install" element={<InstallApp />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

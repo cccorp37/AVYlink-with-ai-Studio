@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, KeyRound, CheckCircle2, RotateCw, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn, signUp, resetPassword } from "@/lib/auth";
+import { signIn, signUp, verifyCodeAndSignUp, sendVerificationCode, resetPassword } from "@/lib/auth";
 
-type Mode = "login" | "signup" | "forgot";
+type Mode = "login" | "signup" | "verify" | "forgot";
 
 interface AuthModalProps {
   defaultMode?: Mode;
@@ -25,9 +25,41 @@ const AuthModal = ({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || !email) return;
+    setLoading(true);
+    const res = await sendVerificationCode(email, fullName);
+    setLoading(false);
+    if (!res.success) {
+      toast({
+        title: "Erreur",
+        description: res.error || "Impossible de renvoyer le code.",
+        variant: "destructive",
+      });
+    } else {
+      if (res.devCode) setDevCode(res.devCode);
+      setResendCooldown(60);
+      toast({
+        title: "Code renvoyé ✉️",
+        description: "Un nouveau code à 6 chiffres a été envoyé à votre adresse email.",
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,18 +86,51 @@ const AuthModal = ({
     }
 
     if (mode === "signup") {
-      const { error } = await signUp(email, password, fullName);
+      const res = await signUp(email, password, fullName);
       setLoading(false);
-      if (error) {
+      if (res.error) {
         toast({
           title: "Erreur d'inscription",
-          description: error.message,
+          description: res.error.message,
+          variant: "destructive",
+        });
+      } else {
+        if (res.data?.devCode) {
+          setDevCode(res.data.devCode);
+        }
+        setResendCooldown(60);
+        setMode("verify");
+        toast({
+          title: "Code de vérification envoyé ✉️",
+          description: "Entrez le code à 6 chiffres reçu par email pour valider votre compte.",
+        });
+      }
+      return;
+    }
+
+    if (mode === "verify") {
+      if (verificationCode.trim().length < 6) {
+        setLoading(false);
+        toast({
+          title: "Code incomplet",
+          description: "Veuillez entrer le code complet à 6 chiffres.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const res = await verifyCodeAndSignUp(email, verificationCode.trim(), password, fullName);
+      setLoading(false);
+      if (res.error) {
+        toast({
+          title: "Erreur de validation",
+          description: res.error.message,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Compte créé ! 🎉",
-          description: "Vérifiez votre email pour confirmer votre compte.",
+          title: "Compte activé ! 🎉",
+          description: "Votre email est confirmé et vous êtes connecté avec succès.",
         });
         onSuccess?.();
         onClose();
@@ -103,15 +168,26 @@ const AuthModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8">
-          <img
-            src="/icon-192.jpg"
-            alt="AvyLink Logo"
-            className="w-9 h-9 rounded-xl object-cover shadow-blue"
-          />
-          <span className="font-dm font-bold text-xl text-foreground">
-            Avy<span className="text-gradient">Link</span>
-          </span>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <img
+              src="/icon-192.jpg"
+              alt="AvyLink Logo"
+              className="w-9 h-9 rounded-xl object-cover shadow-blue"
+            />
+            <span className="font-dm font-bold text-xl text-foreground">
+              Avy<span className="text-gradient">Link</span>
+            </span>
+          </div>
+          {mode === "verify" && (
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Retour
+            </button>
+          )}
         </div>
 
         {/* Title */}
@@ -119,11 +195,18 @@ const AuthModal = ({
           <h2 className="font-dm font-bold text-2xl text-foreground">
             {mode === "login" && "Connexion"}
             {mode === "signup" && "Créer un compte"}
+            {mode === "verify" && "Confirmez votre email 🔐"}
             {mode === "forgot" && "Mot de passe oublié"}
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
             {mode === "login" && "Bon retour sur AvyLink 👋"}
             {mode === "signup" && "Rejoins +10 000 créateurs africains 🌍"}
+            {mode === "verify" && (
+              <>
+                Entrez le code à 6 chiffres envoyé à{" "}
+                <strong className="text-foreground">{email}</strong>
+              </>
+            )}
             {mode === "forgot" &&
               "Entrez votre email pour recevoir un lien de réinitialisation"}
           </p>
@@ -152,28 +235,30 @@ const AuthModal = ({
             </div>
           )}
 
-          <div>
-            <Label
-              htmlFor="email"
-              className="text-sm font-medium text-foreground"
-            >
-              Email
-            </Label>
-            <div className="relative mt-1">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="ton@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="pl-10 rounded-xl border-border focus:ring-primary"
-              />
+          {mode !== "verify" && (
+            <div>
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-foreground"
+              >
+                Email
+              </Label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="ton@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-10 rounded-xl border-border focus:ring-primary"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
-          {mode !== "forgot" && (
+          {mode !== "forgot" && mode !== "verify" && (
             <div>
               <Label
                 htmlFor="password"
@@ -207,6 +292,64 @@ const AuthModal = ({
             </div>
           )}
 
+          {/* Verification Code input mode */}
+          {mode === "verify" && (
+            <div className="space-y-3">
+              <div>
+                <Label
+                  htmlFor="verificationCode"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Code de validation à 6 chiffres
+                </Label>
+                <div className="relative mt-1.5">
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="verificationCode"
+                    type="text"
+                    maxLength={6}
+                    autoFocus
+                    placeholder="123456"
+                    value={verificationCode}
+                    onChange={(e) =>
+                      setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    required
+                    className="pl-11 rounded-xl text-center text-xl font-bold tracking-[6px] border-border focus:ring-primary font-mono"
+                  />
+                </div>
+              </div>
+
+              {devCode && (
+                <div
+                  onClick={() => setVerificationCode(devCode)}
+                  className="cursor-pointer p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-xs text-primary flex items-center justify-between hover:bg-primary/15 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                    Code généré : <strong className="font-mono text-sm tracking-wider">{devCode}</strong>
+                  </span>
+                  <span className="underline font-semibold text-[11px]">Cliquer pour insérer</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                <span>Vous n'avez rien reçu ?</span>
+                <button
+                  type="button"
+                  disabled={resendCooldown > 0 || loading}
+                  onClick={handleResendCode}
+                  className="text-primary font-semibold hover:underline disabled:opacity-50 flex items-center gap-1"
+                >
+                  <RotateCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+                  {resendCooldown > 0
+                    ? `Renvoyer (${resendCooldown}s)`
+                    : "Renvoyer le code"}
+                </button>
+              </div>
+            </div>
+          )}
+
           {mode === "login" && (
             <div className="flex justify-end">
               <button
@@ -222,17 +365,18 @@ const AuthModal = ({
           <Button
             type="submit"
             disabled={loading}
-            className="w-full gradient-cta text-primary-foreground rounded-xl font-semibold shadow-blue hover:shadow-blue-lg transition-all"
+            className="w-full gradient-cta text-primary-foreground rounded-xl font-semibold shadow-blue hover:shadow-blue-lg transition-all h-11"
           >
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />{" "}
-                Chargement...
+                Traitement en cours...
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 {mode === "login" && "Se connecter"}
-                {mode === "signup" && "Créer mon compte"}
+                {mode === "signup" && "Continuer & Recevoir le code"}
+                {mode === "verify" && "Confirmer & Activer mon compte"}
                 {mode === "forgot" && "Envoyer le lien"}
                 <ArrowRight className="w-4 h-4" />
               </span>
@@ -241,7 +385,7 @@ const AuthModal = ({
         </form>
 
         {/* Social sign-in — only on login/signup */}
-        {mode !== "forgot" && (
+        {(mode === "login" || mode === "signup") && (
           <>
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 h-px bg-border" />
@@ -256,7 +400,7 @@ const AuthModal = ({
 
             {typeof window !== "undefined" && window.self !== window.top && (
               <p className="text-[11px] text-muted-foreground text-center mt-2 leading-relaxed">
-                💡 Dans l&apos;aperçu intégré, l&apos;email/mot de passe fonctionne sans restriction. Pour Google, ouvrez l&apos;app dans un nouvel onglet si votre navigateur bloque la popup.
+                💡 L'authentification Email + Code à 6 chiffres fonctionne directement dans l'aperçu.
               </p>
             )}
           </>
@@ -285,6 +429,14 @@ const AuthModal = ({
                 Se connecter
               </button>
             </>
+          )}
+          {mode === "verify" && (
+            <button
+              onClick={() => setMode("signup")}
+              className="text-primary font-semibold hover:underline"
+            >
+              Modifier mon adresse email
+            </button>
           )}
           {mode === "forgot" && (
             <button

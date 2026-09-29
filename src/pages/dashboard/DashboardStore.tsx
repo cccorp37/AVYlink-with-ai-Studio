@@ -11,6 +11,11 @@ import {
   Briefcase,
   Tag,
   Lock,
+  Crown,
+  Sparkles,
+  BookOpen,
+  FileArchive,
+  HardDrive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,9 +57,21 @@ interface StoreItem {
 const ITEM_TYPES = [
   {
     id: "article",
-    label: "Article",
+    label: "Article physique",
     Icon: Tag,
-    desc: "Produit physique ou digital",
+    desc: "Produit physique ou marchandise",
+  },
+  {
+    id: "formation_pack",
+    label: "Pack Formation",
+    Icon: BookOpen,
+    desc: "Cours vidéo, supports & fichiers volumineux",
+  },
+  {
+    id: "heavy_digital",
+    label: "Fichier Lourd",
+    Icon: FileArchive,
+    desc: "Archive ZIP, logiciel, templates",
   },
   {
     id: "service",
@@ -106,8 +123,7 @@ export default function DashboardStore({ profile }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
 
-  const isPremiumOrBusiness =
-    profile?.plan === "premium" || profile?.plan === "business";
+  const isBusiness = profile?.plan === "business";
 
   useEffect(() => {
     if (!profile) return;
@@ -197,6 +213,8 @@ export default function DashboardStore({ profile }: Props) {
   const getTypeIcon = (type: string) => {
     if (type === "service") return <Briefcase className="w-3 h-3" />;
     if (type === "appointment") return <Calendar className="w-3 h-3" />;
+    if (type === "formation_pack") return <BookOpen className="w-3 h-3 text-amber-500" />;
+    if (type === "heavy_digital") return <FileArchive className="w-3 h-3 text-indigo-500" />;
     return <Tag className="w-3 h-3" />;
   };
 
@@ -205,31 +223,49 @@ export default function DashboardStore({ profile }: Props) {
       ? items
       : items.filter((i) => i.item_type === filterType);
 
-  // Gate: Premium/Business only
-  if (!isPremiumOrBusiness) {
+  // Gate: Business plan only (5 850 FCFA)
+  if (!isBusiness) {
     return (
       <div className="p-4 md:p-6 max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-16 space-y-4"
+          className="text-center py-12 px-6 rounded-3xl border border-border/50 bg-card shadow-card space-y-6"
         >
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-            <Lock className="w-8 h-8 text-primary" />
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-500 shadow-sm">
+            <Crown className="w-8 h-8" />
           </div>
-          <h2 className="font-dm font-bold text-xl text-foreground">
-            Boutique Premium
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            La vente d'articles, services et rendez-vous est disponible
-            uniquement avec les plans Premium et Business.
-          </p>
-          <Button
-            onClick={() => (window.location.hash = "#subscription")}
-            className="gradient-cta text-primary-foreground rounded-xl"
-          >
-            Passer à Premium
-          </Button>
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400">
+              <Sparkles className="w-3.5 h-3.5" /> Exclusif Plan Business — 5 850 FCFA/mois
+            </span>
+            <h2 className="font-dm font-bold text-2xl text-foreground">
+              Boutique E-Commerce & Fichiers Lourds
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+              L'ajout d'articles en ligne, la vente de packs de formation et l'import de fichiers volumineux (vidéos, cours, archives ZIP) sont désormais accessibles <strong>exclusivement avec le plan Business</strong>.
+            </p>
+            <div className="p-4 rounded-2xl bg-secondary/40 border border-border/40 text-left text-xs text-muted-foreground max-w-lg mx-auto space-y-1.5 leading-relaxed">
+              <p className="font-semibold text-foreground flex items-center gap-1.5">
+                <HardDrive className="w-4 h-4 text-primary" /> Pourquoi le plan Business ?
+              </p>
+              <p>
+                Le stockage de packs de formation et de fichiers numériques lourds nécessite une infrastructure de stockage cloud dédiée. L'abonnement Business (5 850 FCFA) permet d'activer et de financer cette ressource afin de garantir des téléchargements fiables et sécurisés pour vos acheteurs.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              onClick={() => {
+                window.location.href = "/dashboard/abonnement";
+              }}
+              className="gradient-cta text-primary-foreground rounded-xl px-6 h-11 font-bold shadow-blue hover:shadow-blue-lg transition-all"
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              Passer au Plan Business (5 850 FCFA)
+            </Button>
+          </div>
         </motion.div>
       </div>
     );

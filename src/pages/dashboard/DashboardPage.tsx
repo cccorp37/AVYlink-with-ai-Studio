@@ -36,9 +36,21 @@ import {
   Briefcase,
   Calendar,
   Tag,
+  BookOpen,
+  FileArchive,
+  Crown,
+  Sparkles,
+  LayoutTemplate,
+  AlignLeft,
+  AlignCenter,
+  Share2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import SocialIcon, { PLATFORM_COLORS } from "@/components/SocialIcon";
+import SocialIcon, {
+  PLATFORM_COLORS,
+  PLATFORM_LABELS,
+  formatSocialUrl,
+} from "@/components/SocialIcon";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +58,33 @@ import { firestoreDB as supabase } from "@/lib/db";
 import type { Tables } from "@/lib/types";
 import { VerifiedBadge, BADGE_STYLES } from "@/components/VerifiedBadge";
 import { motion } from "framer-motion";
+
+const PAGE_THEMES = [
+  { id: "default", name: "Classique", preview: "linear-gradient(135deg,#ffffff 60%,#e6f4fd)", emoji: "☀️" },
+  { id: "dark", name: "Sombre", preview: "linear-gradient(135deg,#0f172a,#1e293b)", emoji: "🌙" },
+  { id: "ocean", name: "Océan", preview: "linear-gradient(135deg,#e0f2fe,#bae6fd)", emoji: "🌊" },
+  { id: "rose", name: "Rose", preview: "linear-gradient(135deg,#fdf2f8,#fbcfe8)", emoji: "🌸" },
+  { id: "forest", name: "Forêt", preview: "linear-gradient(135deg,#f0fdf4,#bbf7d0)", emoji: "🌲" },
+  { id: "sunset", name: "Sunset", preview: "linear-gradient(135deg,#fff7ed,#fed7aa)", emoji: "🌅" },
+  { id: "grape", name: "Violet", preview: "linear-gradient(135deg,#faf5ff,#e9d5ff)", emoji: "🍇" },
+  { id: "luxury", name: "Luxe Or", preview: "linear-gradient(135deg,#1c1917,#292524)", emoji: "👑" },
+];
+
+const BUTTON_OPTIONS = [
+  { id: "rounded", label: "Arrondi", radius: "rounded-xl" },
+  { id: "pill", label: "Pilule", radius: "rounded-full" },
+  { id: "square", label: "Carré", radius: "rounded-none" },
+  { id: "glass", label: "Glass", radius: "rounded-xl backdrop-blur-md" },
+  { id: "outline", label: "Contour", radius: "rounded-xl border-2" },
+  { id: "soft", label: "Doux", radius: "rounded-2xl" },
+];
+
+const QUICK_TEMPLATES = [
+  { id: "creator", name: "Créateur Digital", theme: "grape", button_style: "pill", font_style: "poppins", desc: "Design moderne et dynamique pour artistes et influenceurs" },
+  { id: "business", name: "E-Commerce Pro", theme: "dark", button_style: "rounded", font_style: "inter", desc: "Sobre, contrasté et taillé pour convertir les ventes" },
+  { id: "coach", name: "Formateur & Coach", theme: "ocean", button_style: "soft", font_style: "dm", desc: "Idéal pour présenter cours, ateliers et prises de rendez-vous" },
+  { id: "minimal", name: "Minimaliste Chic", theme: "default", button_style: "outline", font_style: "playfair", desc: "Épuré, raffiné, centré sur le contenu essentiel" },
+];
 
 type Profile = Tables<"profiles">;
 
@@ -193,18 +232,21 @@ const BLOCK_TYPES: {
   },
   {
     type: "shop_item",
-    label: "Article / Service",
+    label: "Article / Formation",
     Icon: ShoppingBag,
     iconColor: "text-emerald-600",
     iconBg: "bg-emerald-100 dark:bg-emerald-500/20",
-    desc: "Vente d'article, service ou rendez-vous payant",
+    desc: "Articles, packs de formation & fichiers lourds (Plan Business)",
     preview: "bg-emerald-50 border-emerald-200",
     premium: true,
+    businessOnly: true,
   },
 ];
 
 const SHOP_ITEM_TYPES = [
   { id: "article", label: "Article", Icon: Tag },
+  { id: "formation_pack", label: "Pack Formation", Icon: BookOpen },
+  { id: "heavy_digital", label: "Fichier Lourd", Icon: FileArchive },
   { id: "service", label: "Service", Icon: Briefcase },
   { id: "appointment", label: "Rendez-vous", Icon: Calendar },
 ];
@@ -731,7 +773,7 @@ function BlockEditor({
                 <label className="text-sm font-medium text-foreground mb-1 block">
                   Type d'élément
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {SHOP_ITEM_TYPES.map((t) => {
                     const active =
                       ((form.content?.item_type as string) || "article") ===
@@ -741,12 +783,12 @@ function BlockEditor({
                         key={t.id}
                         type="button"
                         onClick={() => updateContent("item_type", t.id)}
-                        className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${active ? "border-primary bg-primary/5" : "border-border/40"}`}
+                        className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all ${active ? "border-primary bg-primary/5 shadow-xs" : "border-border/40 hover:border-border"}`}
                       >
                         <t.Icon
                           className={`w-4 h-4 ${active ? "text-primary" : "text-muted-foreground"}`}
                         />
-                        <span className="text-[11px] font-medium">
+                        <span className="text-[11px] font-medium text-center">
                           {t.label}
                         </span>
                       </button>
@@ -754,6 +796,41 @@ function BlockEditor({
                   })}
                 </div>
               </div>
+
+              {((form.content?.item_type as string) === "formation_pack" ||
+                (form.content?.item_type as string) === "heavy_digital") && (
+                <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700 dark:text-purple-400">
+                    <Crown className="w-3.5 h-3.5" />
+                    <span>Stockage Fichiers Lourds & Formation (Plan Business)</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-foreground mb-1 block">
+                      Lien de téléchargement / Accès au pack lourd
+                    </label>
+                    <Input
+                      value={(form.content?.download_url as string) || ""}
+                      onChange={(e) => updateContent("download_url", e.target.value)}
+                      placeholder="https://drive.google.com/... ou https://mega.nz/..."
+                      className="rounded-xl bg-background text-xs"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Lien direct ou cloud (Google Drive, Mega, Dropbox) envoyé à l'acheteur après validation du paiement.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-foreground mb-1 block">
+                      Taille estimée du pack ou fichier
+                    </label>
+                    <Input
+                      value={(form.content?.file_size as string) || ""}
+                      onChange={(e) => updateContent("file_size", e.target.value)}
+                      placeholder="Ex: 1.2 Go ou 450 Mo"
+                      className="rounded-xl bg-background text-xs"
+                    />
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-foreground mb-1 block">
                   En-tête
@@ -930,7 +1007,7 @@ function BlockPreview({ block }: { block: PageBlock }) {
       "pinterest",
       "github",
     ];
-    const filled = networks.filter((n) => c[n]);
+    const filled = networks.filter((n) => c[n] && String(c[n]).trim() !== "");
     return (
       <div className="flex flex-wrap gap-2 py-1">
         {filled.length === 0 ? (
@@ -938,15 +1015,25 @@ function BlockPreview({ block }: { block: PageBlock }) {
             Aucun réseau configuré
           </span>
         ) : (
-          filled.map((n) => (
-            <div
-              key={n}
-              className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
-              style={{ backgroundColor: `${PLATFORM_COLORS[n]}18` }}
-            >
-              <SocialIcon platform={n} size={20} />
-            </div>
-          ))
+          filled.map((n) => {
+            const raw = String(c[n]);
+            const href = formatSocialUrl(n, raw);
+            return (
+              <a
+                key={n}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={PLATFORM_LABELS[n] || n}
+                className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                style={{
+                  backgroundColor: `${(PLATFORM_COLORS as Record<string, string>)[n] || "#999"}18`,
+                }}
+              >
+                <SocialIcon platform={n} size={20} />
+              </a>
+            );
+          })
         )}
       </div>
     );
@@ -1071,7 +1158,7 @@ function LivePreviewBlock({ block }: { block: PageBlock }) {
       "pinterest",
       "github",
     ];
-    const filled = networks.filter((n) => c[n]);
+    const filled = networks.filter((n) => c[n] && String(c[n]).trim() !== "");
     if (filled.length === 0)
       return (
         <p className="text-[10px] text-muted-foreground text-center">
@@ -1080,17 +1167,25 @@ function LivePreviewBlock({ block }: { block: PageBlock }) {
       );
     return (
       <div className="flex flex-wrap justify-center gap-1.5 py-1">
-        {filled.map((n) => (
-          <div
-            key={n}
-            className="w-7 h-7 rounded-full flex items-center justify-center shadow-sm"
-            style={{
-              backgroundColor: `${(PLATFORM_COLORS as Record<string, string>)[n] || "#999"}18`,
-            }}
-          >
-            <SocialIcon platform={n} size={14} />
-          </div>
-        ))}
+        {filled.map((n) => {
+          const raw = String(c[n]);
+          const href = formatSocialUrl(n, raw);
+          return (
+            <a
+              key={n}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={PLATFORM_LABELS[n] || n}
+              className="w-7 h-7 rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
+              style={{
+                backgroundColor: `${(PLATFORM_COLORS as Record<string, string>)[n] || "#999"}18`,
+              }}
+            >
+              <SocialIcon platform={n} size={14} />
+            </a>
+          );
+        })}
       </div>
     );
   }
@@ -1310,6 +1405,28 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
       ((profile as Record<string, unknown>)?.cover_url as string) || "",
   });
 
+  // Keep form in sync when profile changes
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        display_name: profile.display_name || "",
+        username: profile.username || "",
+        bio: profile.bio || "",
+        website: profile.website || "",
+        avatar_url: profile.avatar_url || "",
+        cover_url: ((profile as any)?.cover_url as string) || "",
+      });
+    }
+  }, [
+    profile?.id,
+    profile?.display_name,
+    profile?.username,
+    profile?.bio,
+    profile?.website,
+    profile?.avatar_url,
+    (profile as any)?.cover_url,
+  ]);
+
   // Blocks state
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(true);
@@ -1318,6 +1435,9 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
     null,
   );
   const [deletingBlockId, setDeletingBlockId] = useState<string | null>(null);
+
+  // Links state for live phone preview
+  const [links, setLinks] = useState<any[]>([]);
 
   const profileUrl = profile?.username
     ? `${window.location.origin}/u/${profile.username}`
@@ -1332,11 +1452,28 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
         .eq("profile_id", profile.id)
         .order("position", { ascending: true })
         .then(({ data }) => {
-          setBlocks((data as PageBlock[]) || []);
+          if (data && Array.isArray(data)) {
+            setBlocks(data as PageBlock[]);
+          }
           setBlocksLoading(false);
         });
     };
     loadBlocks();
+
+    const loadLinks = () => {
+      supabase
+        .from("profile_links")
+        .select("*")
+        .eq("profile_id", profile.id)
+        .eq("is_active", true)
+        .order("position", { ascending: true })
+        .then(({ data }) => {
+          if (data && Array.isArray(data)) {
+            setLinks(data);
+          }
+        });
+    };
+    loadLinks();
 
     // Realtime subscription for instant updates
     const channel = supabase
@@ -1353,25 +1490,49 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
           loadBlocks();
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profile_links",
+          filter: `profile_id=eq.${profile.id}`,
+        },
+        () => {
+          loadLinks();
+        },
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile]);
+  }, [profile?.id]);
 
   const handleSave = async () => {
+    if (!profile) return;
     setSaving(true);
-    await onUpdate({
-      display_name: form.display_name,
-      username: form.username,
-      bio: form.bio,
-      website: form.website,
-      avatar_url: form.avatar_url,
-      cover_url: form.cover_url,
-    } as Partial<Profile>);
-    setSaving(false);
-    toast({ title: "✅ Profil mis à jour !" });
+    try {
+      const updates = {
+        display_name: form.display_name,
+        username: form.username,
+        bio: form.bio,
+        website: form.website,
+        avatar_url: form.avatar_url,
+        cover_url: form.cover_url,
+      };
+      await onUpdate(updates as Partial<Profile>);
+      await supabase.from("profiles").update(updates).eq("id", profile.id);
+      toast({ title: "✅ Profil mis à jour et enregistré !" });
+    } catch (err: any) {
+      toast({
+        title: "Erreur sauvegarde",
+        description: err?.message || "Impossible d'enregistrer",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const copyUrl = () => {
@@ -1387,7 +1548,7 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${profile.user_id}/avatar.${ext}`;
-    const { error } = await supabase.storage
+    const { data: uploadRes, error } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true });
     if (error) {
@@ -1399,10 +1560,11 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
       setUploading(false);
       return;
     }
-    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-    const avatarUrl = data.publicUrl + `?t=${Date.now()}`;
+    const publicUrl = (uploadRes as any)?.publicUrl || supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+    const avatarUrl = publicUrl + (publicUrl.includes("?") ? "" : `?t=${Date.now()}`);
     setForm((f) => ({ ...f, avatar_url: avatarUrl }));
     await onUpdate({ avatar_url: avatarUrl });
+    await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", profile.id);
     toast({ title: "✅ Photo de profil mise à jour !" });
     setUploading(false);
   };
@@ -1413,7 +1575,7 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
     setUploadingCover(true);
     const ext = file.name.split(".").pop();
     const path = `${profile.user_id}/cover.${ext}`;
-    const { error } = await supabase.storage
+    const { data: uploadRes, error } = await supabase.storage
       .from("covers")
       .upload(path, file, { upsert: true });
     if (error) {
@@ -1425,16 +1587,26 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
       setUploadingCover(false);
       return;
     }
-    const { data } = supabase.storage.from("covers").getPublicUrl(path);
-    const coverUrl = data.publicUrl + `?t=${Date.now()}`;
+    const publicUrl = (uploadRes as any)?.publicUrl || supabase.storage.from("covers").getPublicUrl(path).data.publicUrl;
+    const coverUrl = publicUrl + (publicUrl.includes("?") ? "" : `?t=${Date.now()}`);
     setForm((f) => ({ ...f, cover_url: coverUrl }));
     await onUpdate({ cover_url: coverUrl } as Partial<Profile>);
+    await supabase.from("profiles").update({ cover_url: coverUrl }).eq("id", profile.id);
     toast({ title: "✅ Photo de couverture mise à jour !" });
     setUploadingCover(false);
   };
 
   const addBlock = (type: string) => {
     const blockDef = BLOCK_TYPES.find((b) => b.type === type);
+    if ((blockDef as any)?.businessOnly && profile?.plan !== "business") {
+      toast({
+        title: "Plan Business Requis (5 850 FCFA) 💼",
+        description: "L'e-commerce, les packs de formation et les fichiers lourds sont réservés au Plan Business.",
+        variant: "destructive",
+      });
+      navigate("/dashboard/abonnement");
+      return;
+    }
     if (blockDef?.premium && profile?.plan === "free") {
       toast({
         title: "Fonctionnalité Premium 👑",
@@ -1472,6 +1644,8 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
       seller_phone: (content.seller_phone as string) || null,
       seller_email: (content.seller_email as string) || null,
       header_text: (content.header_text as string) || null,
+      download_url: (content.download_url as string) || null,
+      file_size: (content.file_size as string) || null,
       is_active: true,
     };
     if (existingId) {
@@ -1500,45 +1674,106 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
         content.store_item_id as string | undefined,
       );
     }
-    if (data.id) {
-      // Update existing
-      const { data: updated } = await supabase
-        .from("page_blocks")
-        .update({
-          title: data.title,
-          content: content as Record<string, string | number | boolean | null>,
-          is_active: data.is_active,
-        })
-        .eq("id", data.id)
-        .select()
-        .single();
-      if (updated)
-        setBlocks((prev) =>
-          prev.map((b) => (b.id === data.id ? (updated as PageBlock) : b)),
-        );
-    } else {
-      // Insert new
-      const { data: created } = await supabase
-        .from("page_blocks")
-        .insert([
-          {
-            profile_id: profile.id,
-            type: data.type!,
-            title: data.title || null,
-            content: content as Record<
-              string,
-              string | number | boolean | null
-            >,
-            position: blocks.length,
-            is_active: true,
-          },
-        ])
-        .select()
-        .single();
-      if (created) setBlocks((prev) => [...prev, created as PageBlock]);
+
+    if (data.type === "social_icons") {
+      const normalized: Record<string, unknown> = { ...content };
+      for (const [key, val] of Object.entries(content)) {
+        if (typeof val === "string" && val.trim()) {
+          normalized[key] = formatSocialUrl(key, val.trim());
+        }
+      }
+      content = normalized;
     }
-    setEditingBlock(null);
-    toast({ title: "✅ Bloc sauvegardé !" });
+
+    if (data.id) {
+      // Optimistic update so it immediately reflects in the mockup and blocks list
+      setBlocks((prev) =>
+        prev.map((b) =>
+          b.id === data.id
+            ? ({
+                ...b,
+                title: data.title !== undefined ? data.title : b.title,
+                content: content as Record<string, string | number | boolean | null>,
+                is_active: data.is_active !== undefined ? data.is_active : b.is_active,
+              } as PageBlock)
+            : b,
+        ),
+      );
+      setEditingBlock(null);
+      toast({ title: "✅ Bloc mis à jour !" });
+
+      try {
+        const { data: updated } = await supabase
+          .from("page_blocks")
+          .update({
+            title: data.title,
+            content: content as Record<string, string | number | boolean | null>,
+            is_active: data.is_active,
+          })
+          .eq("id", data.id)
+          .select()
+          .single();
+        if (updated) {
+          setBlocks((prev) =>
+            prev.map((b) => (b.id === data.id ? (updated as PageBlock) : b)),
+          );
+        }
+      } catch (err) {
+        console.error("Error saving block update:", err);
+      }
+    } else {
+      // Optimistic insert so the block is immediately visible in the live preview
+      const tempId =
+        "block_" +
+        Date.now() +
+        "_" +
+        Math.random().toString(36).substring(2, 7);
+      const newBlock: PageBlock = {
+        id: tempId,
+        profile_id: profile.id,
+        type: data.type!,
+        title: data.title || null,
+        content: content as Record<string, string | number | boolean | null>,
+        position: blocks.length,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+
+      setBlocks((prev) => [...prev, newBlock]);
+      setEditingBlock(null);
+      toast({ title: "✅ Bloc ajouté avec succès !" });
+
+      try {
+        const { data: created } = await supabase
+          .from("page_blocks")
+          .insert([
+            {
+              profile_id: profile.id,
+              type: data.type!,
+              title: data.title || null,
+              content: content as Record<
+                string,
+                string | number | boolean | null
+              >,
+              position: blocks.length,
+              is_active: true,
+            },
+          ])
+          .select()
+          .single();
+
+        if (created) {
+          const item = Array.isArray(created) ? created[0] : created;
+          if (item && item.id) {
+            setBlocks((prev) =>
+              prev.map((b) => (b.id === tempId ? (item as PageBlock) : b)),
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Error inserting block into DB:", err);
+      }
+    }
   };
 
   const deleteBlock = async (id: string) => {
@@ -1546,23 +1781,37 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
     const blk = blocks.find((b) => b.id === id);
     const storeItemId = (blk?.content as Record<string, unknown> | undefined)
       ?.store_item_id as string | undefined;
-    await supabase.from("page_blocks").delete().eq("id", id);
-    if (storeItemId) {
-      await supabase.from("store_items").delete().eq("id", storeItemId);
-    }
+
+    // Optimistically remove from state immediately
     setBlocks((prev) => prev.filter((b) => b.id !== id));
-    setDeletingBlockId(null);
+    toast({ title: "🗑️ Bloc supprimé" });
+
+    try {
+      await supabase.from("page_blocks").delete().eq("id", id);
+      if (storeItemId) {
+        await supabase.from("store_items").delete().eq("id", storeItemId);
+      }
+    } catch (err) {
+      console.error("Error deleting block:", err);
+    } finally {
+      setDeletingBlockId(null);
+    }
   };
 
   const toggleBlock = async (block: PageBlock) => {
     const newVal = !block.is_active;
-    await supabase
-      .from("page_blocks")
-      .update({ is_active: newVal })
-      .eq("id", block.id);
+    // Optimistic toggle
     setBlocks((prev) =>
       prev.map((b) => (b.id === block.id ? { ...b, is_active: newVal } : b)),
     );
+    try {
+      await supabase
+        .from("page_blocks")
+        .update({ is_active: newVal })
+        .eq("id", block.id);
+    } catch (err) {
+      console.error("Error toggling block:", err);
+    }
   };
 
   const moveBlock = async (id: string, dir: "up" | "down") => {
@@ -1646,11 +1895,15 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
                     animationFillMode: "forwards",
                   }}
                 >
-                  {bt.premium && (
+                  {(bt as any).businessOnly ? (
+                    <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-xs">
+                      💼 Business
+                    </span>
+                  ) : bt.premium ? (
                     <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950">
                       👑
                     </span>
-                  )}
+                  ) : null}
                   <div
                     className={`w-11 h-11 rounded-2xl flex items-center justify-center ${bt.iconBg} group-hover:shadow-md group-hover:scale-110 transition-all duration-200`}
                   >
@@ -2011,7 +2264,7 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
         {profile?.plan !== "free" ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Affiche un badge vérifié à côté de ton nom sur ta page publique.
+              Affiche un badge certifié à côté de ton nom sur ta page publique.
             </p>
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-3">
@@ -2034,11 +2287,14 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
                 whileTap={{ scale: 0.9 }}
                 onClick={async () => {
                   const newVal = !profile?.is_verified;
-                  await supabase
-                    .from("profiles")
-                    .update({ is_verified: newVal } as never)
-                    .eq("id", profile?.id);
-                  onUpdate({ is_verified: newVal } as any);
+                  await onUpdate({ is_verified: newVal } as any);
+                  if (profile) {
+                    await supabase
+                      .from("profiles")
+                      .update({ is_verified: newVal } as never)
+                      .eq("id", profile.id);
+                  }
+                  toast({ title: newVal ? "✅ Badge vérifié activé !" : "Badge vérifié masqué" });
                 }}
                 className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${profile?.is_verified ? "bg-primary" : "bg-muted"}`}
               >
@@ -2061,11 +2317,14 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
                       whileHover={{ scale: 1.08 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={async () => {
-                        await supabase
-                          .from("profiles")
-                          .update({ verified_badge_style: badge.id } as never)
-                          .eq("id", profile?.id);
-                        onUpdate({ verified_badge_style: badge.id } as any);
+                        await onUpdate({ verified_badge_style: badge.id } as any);
+                        if (profile) {
+                          await supabase
+                            .from("profiles")
+                            .update({ verified_badge_style: badge.id } as never)
+                            .eq("id", profile.id);
+                        }
+                        toast({ title: `Style de badge "${badge.label}" activé !` });
                       }}
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
                         (profile as any)?.verified_badge_style === badge.id ||
@@ -2100,7 +2359,7 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
                 strokeWidth={2.5}
               />
               <p className="text-sm text-muted-foreground">
-                Badge vérifié — indisponible
+                Badge vérifié — disponible avec le Plan Premium
               </p>
             </div>
           </div>
@@ -2136,11 +2395,13 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
               whileTap={{ scale: 0.9 }}
               onClick={async () => {
                 const newVal = !(profile as any)?.hide_branding;
-                await supabase
-                  .from("profiles")
-                  .update({ hide_branding: newVal } as never)
-                  .eq("id", profile?.id);
-                onUpdate({ hide_branding: newVal } as any);
+                await onUpdate({ hide_branding: newVal } as any);
+                if (profile) {
+                  await supabase
+                    .from("profiles")
+                    .update({ hide_branding: newVal } as never)
+                    .eq("id", profile.id);
+                }
               }}
               className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${(profile as any)?.hide_branding ? "bg-primary" : "bg-muted"}`}
             >
@@ -2159,127 +2420,192 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
         )}
       </div>
 
-      {/* Live Preview */}
-      <div className="bg-card rounded-2xl border border-border/50 shadow-card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-dm font-bold text-base text-foreground flex items-center gap-2">
-            <Smartphone className="w-4 h-4 text-primary" /> Aperçu en direct
-          </h3>
-          {profile?.username && (
-            <a
-              href={`/u/${profile.username}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-            >
-              Ouvrir <ExternalLink className="w-3 h-3" />
-            </a>
+      {/* 📱 Live Preview (Aperçu en direct haute fidélité) */}
+      <div className="bg-card rounded-2xl border border-border/50 shadow-card p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-dm font-bold text-base text-foreground flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-primary" /> Aperçu en direct
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Visualisation en temps réel de ton portfolio tel qu'il apparaît aux visiteurs.
+            </p>
+          </div>
+          {profileUrl && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={copyUrl}
+                className="text-xs font-semibold rounded-xl gap-1.5 h-8"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copié !" : "Partager"}
+              </Button>
+              <a
+                href={profileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl gradient-cta text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-95 transition-opacity h-8"
+              >
+                Ouvrir ma page <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
           )}
         </div>
 
         {/* Phone mockup */}
-        <div className="mx-auto w-full max-w-[320px]">
-          <div className="rounded-[2rem] border-[6px] border-foreground/10 dark:border-foreground/20 bg-background shadow-lg overflow-hidden">
-            {/* Phone status bar */}
-            <div className="h-6 bg-foreground/5 flex items-center justify-center">
-              <div className="w-16 h-1.5 rounded-full bg-foreground/10" />
+        <div className="mx-auto w-full max-w-[340px] pt-2">
+          <div className="rounded-[2.5rem] border-[8px] border-foreground/15 dark:border-foreground/25 bg-background shadow-2xl overflow-hidden ring-1 ring-border">
+            {/* Phone notch / status bar */}
+            <div className="h-7 bg-foreground/5 flex items-center justify-center relative">
+              <div className="w-20 h-3 rounded-full bg-foreground/15" />
             </div>
 
-            {/* Scrollable content */}
-            <div
-              className="h-[480px] overflow-y-auto overflow-x-hidden"
-              style={{ scrollbarWidth: "none" }}
-            >
-              {/* Cover */}
-              <div className="relative">
-                <div className="h-28 w-full bg-gradient-to-br from-primary/30 to-primary/10 overflow-hidden">
-                  {form.cover_url ? (
-                    <img
-                      src={form.cover_url}
-                      alt="Cover"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/30" />
-                  )}
-                </div>
+            {/* Scrollable live screen */}
+            {(() => {
+              const currentTheme = PAGE_THEMES.find((t) => t.id === profile?.theme) || PAGE_THEMES[0];
+              const phoneBg = profile?.background_color || currentTheme.preview;
+              const isAvatarLeft = (profile as any)?.avatar_position === "left";
+              const btnRadius = profile?.button_style === "pill"
+                ? "rounded-full"
+                : profile?.button_style === "square"
+                ? "rounded-none"
+                : profile?.button_style === "soft"
+                ? "rounded-2xl"
+                : "rounded-xl";
 
-                {/* Avatar */}
-                <div className="flex justify-center -mt-8 relative z-10">
-                  <div className="relative">
-                    {form.avatar_url ? (
-                      <img
-                        src={form.avatar_url}
-                        alt="Avatar"
-                        className="w-16 h-16 rounded-full object-cover border-[3px] border-background shadow-md"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-lg font-bold border-[3px] border-background shadow-md">
-                        {(form.display_name ||
-                          form.username ||
-                          "?")[0].toUpperCase()}
+              return (
+                <div
+                  className="h-[520px] overflow-y-auto overflow-x-hidden flex flex-col justify-between"
+                  style={{
+                    background: phoneBg,
+                    scrollbarWidth: "none",
+                  }}
+                >
+                  <div>
+                    {/* Cover photo */}
+                    <div className="relative">
+                      <div className="h-28 w-full bg-gradient-to-br from-primary/30 to-primary/10 overflow-hidden">
+                        {form.cover_url ? (
+                          <img
+                            src={form.cover_url}
+                            alt="Cover"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/30" />
+                        )}
+                      </div>
+
+                      {/* Avatar */}
+                      <div className={`flex ${isAvatarLeft ? "justify-start pl-4" : "justify-center"} -mt-9 relative z-10`}>
+                        <div className="relative">
+                          {form.avatar_url ? (
+                            <img
+                              src={form.avatar_url}
+                              alt="Avatar"
+                              className="w-18 h-18 rounded-full object-cover border-[3px] border-background shadow-md"
+                              style={{ width: 72, height: 72 }}
+                            />
+                          ) : (
+                            <div
+                              className="rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xl font-bold border-[3px] border-background shadow-md"
+                              style={{ width: 72, height: 72 }}
+                            >
+                              {(form.display_name || form.username || "?")[0].toUpperCase()}
+                            </div>
+                          )}
+                          {profile?.is_verified && (
+                            <span className="absolute -bottom-0.5 -right-0.5">
+                              <VerifiedBadge
+                                style={(profile as any)?.verified_badge_style}
+                                size="sm"
+                              />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Profile info */}
+                    <div className={`px-4 mt-2 mb-3 ${isAvatarLeft ? "text-left" : "text-center"}`}>
+                      <div className={`flex items-center gap-1.5 ${isAvatarLeft ? "justify-start" : "justify-center"}`}>
+                        <p className="font-dm font-bold text-sm text-foreground">
+                          {form.display_name || "Ton nom"}
+                        </p>
+                      </div>
+                      {form.username && (
+                        <p className="text-[11px] text-muted-foreground font-medium">
+                          @{form.username}
+                        </p>
+                      )}
+                      {form.bio && (
+                        <p className="text-[11px] text-foreground/80 mt-1 leading-snug">
+                          {form.bio}
+                        </p>
+                      )}
+                      {form.website && (
+                        <div className={`flex ${isAvatarLeft ? "justify-start" : "justify-center"} mt-1.5`}>
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-border/50 bg-secondary/40 text-[10px] text-muted-foreground">
+                            <Globe className="w-2.5 h-2.5" />
+                            {form.website.replace(/^https?:\/\//, "").slice(0, 25)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active Links */}
+                    {links.length > 0 && (
+                      <div className="px-3 space-y-2 mb-3">
+                        {links.map((link) => (
+                          <div
+                            key={link.id}
+                            className={`p-3 text-center text-xs font-semibold shadow-xs border border-border/50 bg-card/90 backdrop-blur-xs flex items-center justify-center gap-2 transition-all ${btnRadius}`}
+                          >
+                            <Link2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                            <span className="truncate">{link.title}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
-                    {profile?.is_verified && (
-                      <span className="absolute -bottom-0.5 -right-0.5">
-                        <VerifiedBadge
-                          style={(profile as any).verified_badge_style}
-                          size="sm"
-                        />
-                      </span>
-                    )}
+
+                    {/* Live blocks */}
+                    <div className="px-3 pb-4 space-y-2">
+                      {blocks
+                        .filter((b) => b.is_active)
+                        .map((block) => (
+                          <LivePreviewBlock key={block.id} block={block} />
+                        ))}
+
+                      {blocks.filter((b) => b.is_active).length === 0 && links.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground px-4">
+                          <p className="text-xs font-medium">
+                            Ton portfolio est prêt !
+                          </p>
+                          <p className="text-[10px] mt-1">
+                            Ajoute des blocs multimédias et tes liens pour enrichir ta page.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Public branding preview */}
+                  {!(profile as any)?.hide_branding && (
+                    <div className="py-3 text-center">
+                      <p className="text-[9px] text-muted-foreground font-semibold flex items-center justify-center gap-1">
+                        ⚡ Créé avec <span className="text-primary font-bold">AvyLink</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* Profile info */}
-              <div className="text-center px-4 mt-2 mb-3">
-                <div className="flex items-center justify-center gap-1.5">
-                  <p className="font-dm font-bold text-sm text-foreground">
-                    {form.display_name || "Ton nom"}
-                  </p>
-                </div>
-                {form.username && (
-                  <p className="text-[11px] text-muted-foreground">
-                    @{form.username}
-                  </p>
-                )}
-                {form.bio && (
-                  <p className="text-[11px] text-foreground/70 mt-1 leading-snug">
-                    {form.bio}
-                  </p>
-                )}
-                {form.website && (
-                  <div className="flex justify-center mt-1.5">
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-border/50 bg-secondary/30 text-[10px] text-muted-foreground">
-                      <Globe className="w-2.5 h-2.5" />
-                      {form.website.replace(/^https?:\/\//, "").slice(0, 25)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Live blocks */}
-              <div className="px-3 pb-4 space-y-2">
-                {blocks
-                  .filter((b) => b.is_active)
-                  .map((block) => (
-                    <LivePreviewBlock key={block.id} block={block} />
-                  ))}
-
-                {blocks.filter((b) => b.is_active).length === 0 && (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <p className="text-[10px]">
-                      Ajoute des blocs pour les voir ici
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Phone bottom bar */}
-            <div className="h-5 bg-foreground/5 flex items-center justify-center">
-              <div className="w-24 h-1 rounded-full bg-foreground/15" />
+            <div className="h-6 bg-foreground/5 flex items-center justify-center">
+              <div className="w-28 h-1 rounded-full bg-foreground/20" />
             </div>
           </div>
         </div>

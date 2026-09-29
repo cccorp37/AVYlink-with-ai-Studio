@@ -48,6 +48,13 @@ const fadeUp = {
   }),
 };
 
+const QUICK_TEMPLATES = [
+  { id: "creator", name: "Créateur Digital", theme: "grape", button_style: "pill", font_style: "poppins", desc: "Design moderne et dynamique pour artistes et influenceurs" },
+  { id: "business", name: "E-Commerce Pro", theme: "dark", button_style: "rounded", font_style: "inter", desc: "Sobre, contrasté et taillé pour convertir les ventes" },
+  { id: "coach", name: "Formateur & Coach", theme: "ocean", button_style: "soft", font_style: "dm", desc: "Idéal pour présenter cours, ateliers et prises de rendez-vous" },
+  { id: "minimal", name: "Minimaliste Chic", theme: "default", button_style: "outline", font_style: "playfair", desc: "Épuré, raffiné, centré sur le contenu essentiel" },
+];
+
 const THEMES = [
   {
     id: "default",
@@ -396,6 +403,69 @@ export default function DashboardAppearance({ profile, onUpdate }: Props) {
           </motion.div>
         );
       })()}
+
+      {/* ⚡ Modèles Clé en Main (1-Click) */}
+      <motion.div
+        custom={-0.5}
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp}
+        className="rounded-2xl border border-border/40 shadow-card p-5 relative overflow-hidden bg-card space-y-3"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="font-dm font-bold text-base text-foreground">
+              Appliquer un modèle en 1 clic
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Harmonise automatiquement ton portfolio (thème, boutons et polices).
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {QUICK_TEMPLATES.map((tpl) => (
+            <div
+              key={tpl.id}
+              className="p-3.5 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:shadow-md transition-all flex flex-col justify-between gap-3"
+            >
+              <div>
+                <p className="font-dm font-bold text-sm text-foreground">
+                  {tpl.name}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  {tpl.desc}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  setSelectedTheme(tpl.theme);
+                  setSelectedButton(tpl.button_style);
+                  setSelectedFont(tpl.font_style);
+                  const updates = {
+                    theme: tpl.theme as any,
+                    button_style: tpl.button_style,
+                    font_style: tpl.font_style,
+                  };
+                  await onUpdate(updates as Partial<Profile>);
+                  if (profile) {
+                    await supabase.from("profiles").update(updates).eq("id", profile.id);
+                  }
+                  toast({ title: `✨ Modèle "${tpl.name}" appliqué et enregistré !` });
+                }}
+                className="w-full text-xs font-semibold rounded-lg hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
+              >
+                Appliquer ce modèle
+              </Button>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Theme */}
       <motion.div

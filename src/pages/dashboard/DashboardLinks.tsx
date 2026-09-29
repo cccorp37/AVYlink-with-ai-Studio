@@ -94,31 +94,48 @@ export default function DashboardLinks({ profile }: Props) {
   const handleAddLink = async () => {
     if (!preview || !profile) return;
     const meta = preview as { url: string; title: string; platform: string };
-    const { data, error } = await supabase
-      .from("profile_links")
-      .insert({
-        profile_id: profile.id,
-        url: meta.url,
-        title: meta.title || "Lien",
-        icon: meta.platform || "website",
-        position: links.length,
-        is_active: true,
-      })
-      .select()
-      .single();
-    if (error) {
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-    if (data) {
-      setLinks((prev) => [...prev, data]);
-      setUrl("");
-      setPreview(null);
-      toast({ title: "✅ Lien ajouté !" });
+    const normalizedUrl =
+      meta.url?.startsWith("http://") || meta.url?.startsWith("https://")
+        ? meta.url
+        : `https://${meta.url}`;
+    const tempId = "link_" + Date.now();
+    const newLink: ProfileLink = {
+      id: tempId,
+      profile_id: profile.id,
+      url: normalizedUrl,
+      title: meta.title || "Lien",
+      icon: meta.platform || "website",
+      position: links.length,
+      is_active: true,
+      click_count: 0,
+      created_at: new Date().toISOString(),
+    };
+
+    setLinks((prev) => [...prev, newLink]);
+    setUrl("");
+    setPreview(null);
+    toast({ title: "✅ Lien ajouté !" });
+
+    try {
+      const { data, error } = await supabase
+        .from("profile_links")
+        .insert({
+          profile_id: profile.id,
+          url: normalizedUrl,
+          title: meta.title || "Lien",
+          icon: meta.platform || "website",
+          position: links.length,
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (data) {
+        setLinks((prev) =>
+          prev.map((l) => (l.id === tempId ? (data as ProfileLink) : l)),
+        );
+      }
+    } catch (err: any) {
+      console.error("Error inserting profile link:", err);
     }
   };
 

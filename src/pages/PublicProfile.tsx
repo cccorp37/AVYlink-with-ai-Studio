@@ -10,12 +10,16 @@ import {
   Tag,
   Briefcase,
   Calendar,
+  BookOpen,
+  FileArchive,
+  Download,
 } from "lucide-react";
 import { firestoreDB as supabase } from "@/lib/db";
 import SocialIcon, {
   getPlatformColor,
   getPlatformLabel,
   PLATFORM_COLORS,
+  formatSocialUrl,
 } from "@/components/SocialIcon";
 import type { Tables } from "@/lib/types";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -257,24 +261,31 @@ function SocialIconsBlock({ content }: { content: Record<string, unknown> }) {
     "pinterest",
     "github",
   ];
-  const filled = networks.filter((n) => content[n]);
+  const filled = networks.filter(
+    (n) => content[n] && String(content[n]).trim() !== "",
+  );
   if (filled.length === 0) return null;
   return (
     <div className="flex flex-wrap justify-center gap-3 py-2">
-      {filled.map((n) => (
-        <a
-          key={n}
-          href={content[n] as string}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-sm"
-          style={{
-            backgroundColor: `${(PLATFORM_COLORS as Record<string, string>)[n] || "#999"}18`,
-          }}
-        >
-          <SocialIcon platform={n} size={22} />
-        </a>
-      ))}
+      {filled.map((n) => {
+        const raw = String(content[n]);
+        const href = formatSocialUrl(n, raw);
+        return (
+          <a
+            key={n}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={getPlatformLabel(n)}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-sm"
+            style={{
+              backgroundColor: `${(PLATFORM_COLORS as Record<string, string>)[n] || "#999"}18`,
+            }}
+          >
+            <SocialIcon platform={n} size={22} />
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -737,14 +748,27 @@ function PageBlockRenderer({
           ? Briefcase
           : itemType === "appointment"
             ? Calendar
-            : Tag;
+            : itemType === "formation_pack"
+              ? BookOpen
+              : itemType === "heavy_digital"
+                ? FileArchive
+                : Tag;
       const typeLabel =
         itemType === "service"
           ? "Service"
           : itemType === "appointment"
             ? "Rendez-vous"
-            : "Article";
-      const ctaLabel = itemType === "appointment" ? "Réserver" : "Acheter";
+            : itemType === "formation_pack"
+              ? "Pack Formation"
+              : itemType === "heavy_digital"
+                ? "Fichier Lourd"
+                : "Article";
+      const ctaLabel =
+        itemType === "appointment"
+          ? "Réserver"
+          : itemType === "formation_pack" || itemType === "heavy_digital"
+            ? "Télécharger"
+            : "Acheter";
       return (
         <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
           {c.image_url ? (
@@ -758,9 +782,16 @@ function PageBlockRenderer({
             />
           ) : null}
           <div className="p-4 space-y-2">
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-              <TypeIcon className="w-3 h-3" /> {typeLabel}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <TypeIcon className="w-3 h-3" /> {typeLabel}
+              </span>
+              {c.file_size ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/40">
+                  <Download className="w-3 h-3" /> {c.file_size as string}
+                </span>
+              ) : null}
+            </div>
             {c.header_text ? (
               <p className="text-xs font-medium text-muted-foreground">
                 {c.header_text as string}
@@ -883,16 +914,71 @@ const PublicProfile = () => {
     };
 
     const loadProfile = async () => {
-      const { data: profileData, error } = await supabase
+      const cleanUsername = (username || "").replace(/^@/, "").trim().toLowerCase();
+      let profileData: Profile | null = null;
+
+      // 1. Try querying by username directly
+      const byUser = await supabase
         .from("profiles")
         .select("*")
-        .eq("username", username)
+        .eq("username", cleanUsername)
         .single();
-      if (error || !profileData) {
+      if (byUser.data) {
+        profileData = byUser.data as Profile;
+      } else {
+        // 2. Try querying by id directly
+        const byId = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", cleanUsername)
+          .single();
+        if (byId.data) {
+          profileData = byId.data as Profile;
+        } else {
+          // 3. Fallback: query all profiles and match case-insensitively
+          const all = await supabase.from("profiles").select("*");
+          if (all.data && Array.isArray(all.data)) {
+            const found = all.data.find(
+              (p: any) =>
+                (p.username && p.username.toLowerCase() === cleanUsername) ||
+                p.id === cleanUsername
+            );
+            if (found) profileData = found as Profile;
+          }
+        }
+      }
+
+      // If still not found and username is admin, automatically initialize the admin profile
+      if (!profileData && cleanUsername === "admin") {
+        const { data: createdAdmin } = await supabase
+          .from("profiles")
+          .insert({
+            id: "prof_admin_master",
+            user_id: "admin_master_uid",
+            username: "admin",
+            display_name: "Administrateur AvyLink",
+            bio: "Bienvenue sur la page officielle AvyLink Hub ✨",
+            plan: "business",
+            theme: "modern",
+            button_style: "rounded",
+            font_style: "inter",
+            is_verified: true,
+            verified_badge_style: "star",
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+        if (createdAdmin) {
+          profileData = createdAdmin as Profile;
+        }
+      }
+
+      if (!profileData) {
         setNotFound(true);
         setLoading(false);
         return;
       }
+
       setProfile(profileData as Profile);
       profileId = profileData.id;
       await loadData(profileId);
@@ -1249,7 +1335,12 @@ const PublicProfile = () => {
               return (
                 <a
                   key={link.id}
-                  href={link.url}
+                  href={
+                    link.url?.startsWith("http://") ||
+                    link.url?.startsWith("https://")
+                      ? link.url
+                      : `https://${link.url}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => incrementClick(link.id)}

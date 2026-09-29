@@ -23,20 +23,75 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem("avylink_user_session");
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u) {
+          u.id = u.id || u.uid;
+          return u;
+        }
+      }
+    } catch (_) {}
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const syncLocal = () => {
+      try {
+        const stored = localStorage.getItem("avylink_user_session");
+        if (stored) {
+          const u = JSON.parse(stored);
+          if (u) {
+            u.id = u.id || u.uid;
+            setUser(u);
+            setLoading(false);
+            return;
+          }
+        } else if (!auth.currentUser) {
+          setUser(null);
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener("avylink_auth_change", syncLocal);
+    window.addEventListener("storage", syncLocal);
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         // Alias uid to id for compatibility with components written for Supabase
         (currentUser as any).id = currentUser.uid;
+        localStorage.setItem("avylink_user_session", JSON.stringify(currentUser));
+        setUser(currentUser);
+      } else {
+        // Check if there's a custom stored session
+        const stored = localStorage.getItem("avylink_user_session");
+        if (stored) {
+          try {
+            const u = JSON.parse(stored);
+            if (u && (u.uid || u.email)) {
+              u.id = u.id || u.uid;
+              setUser(u);
+            } else {
+              setUser(null);
+            }
+          } catch (_) {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
       }
-      setUser(currentUser);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener("avylink_auth_change", syncLocal);
+      window.removeEventListener("storage", syncLocal);
+    };
   }, []);
 
   const waitForAuth = async (): Promise<User | null> => {

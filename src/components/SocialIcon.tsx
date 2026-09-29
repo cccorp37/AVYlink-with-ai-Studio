@@ -78,6 +78,124 @@ export function getPlatformLabel(platform: string): string {
   return PLATFORM_LABELS[platform.toLowerCase()] || "Lien";
 }
 
+/**
+ * Normalizes user input into a valid, clickable social URL.
+ * Handles handles (@myname, myname), phone numbers, and full/partial URLs.
+ */
+export function formatSocialUrl(platform: string, input: string): string {
+  if (!input) return "";
+  const val = String(input).trim();
+  if (!val) return "";
+
+  // If already an absolute http/https/mailto/tel URL
+  if (
+    val.startsWith("http://") ||
+    val.startsWith("https://") ||
+    val.startsWith("mailto:") ||
+    val.startsWith("tel:")
+  ) {
+    return val;
+  }
+
+  const p = platform.toLowerCase();
+  const cleanHandle = val.startsWith("@") ? val.slice(1).trim() : val;
+
+  switch (p) {
+    case "whatsapp": {
+      if (val.includes("wa.me/") || val.includes("whatsapp.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      const digits = val.replace(/[^0-9]/g, "");
+      return digits ? `https://wa.me/${digits}` : `https://wa.me/${cleanHandle}`;
+    }
+    case "telegram": {
+      if (val.includes("t.me/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://t.me/${cleanHandle}`;
+    }
+    case "instagram": {
+      if (val.includes("instagram.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://instagram.com/${cleanHandle}`;
+    }
+    case "tiktok": {
+      if (val.includes("tiktok.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://tiktok.com/@${cleanHandle}`;
+    }
+    case "twitter":
+    case "x": {
+      if (val.includes("twitter.com/") || val.includes("x.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://x.com/${cleanHandle}`;
+    }
+    case "youtube": {
+      if (val.includes("youtube.com/") || val.includes("youtu.be/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      if (cleanHandle.startsWith("UC")) {
+        return `https://youtube.com/channel/${cleanHandle}`;
+      }
+      return `https://youtube.com/@${cleanHandle}`;
+    }
+    case "facebook": {
+      if (val.includes("facebook.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://facebook.com/${cleanHandle}`;
+    }
+    case "linkedin": {
+      if (val.includes("linkedin.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://linkedin.com/in/${cleanHandle}`;
+    }
+    case "github": {
+      if (val.includes("github.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://github.com/${cleanHandle}`;
+    }
+    case "discord": {
+      if (val.includes("discord.gg/") || val.includes("discord.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://discord.gg/${cleanHandle}`;
+    }
+    case "snapchat": {
+      if (val.includes("snapchat.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://snapchat.com/add/${cleanHandle}`;
+    }
+    case "pinterest": {
+      if (val.includes("pinterest.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://pinterest.com/${cleanHandle}`;
+    }
+    case "spotify": {
+      if (val.includes("spotify.com/")) {
+        return `https://${val.replace(/^https?:\/\//, "")}`;
+      }
+      return `https://open.spotify.com/${val}`;
+    }
+    case "email": {
+      return `mailto:${val}`;
+    }
+    case "phone": {
+      return `tel:${val}`;
+    }
+    default: {
+      return `https://${val}`;
+    }
+  }
+}
+
 export default function SocialIcon({
   platform,
   size = 24,

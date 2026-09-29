@@ -22,6 +22,7 @@ import {
   Lightbulb,
   BookOpen,
   Download,
+  Palette,
 } from "lucide-react";
 import { firestoreDB as supabase } from "@/lib/db";
 import { Input } from "@/components/ui/input";
@@ -112,6 +113,13 @@ export default function DashboardSettings({ profile, onUpdate }: Props) {
     );
 
   const generalItems = [
+    {
+      icon: Palette,
+      label: "Apparence & Thème de la page",
+      desc: "Thèmes, modèles 1-clic, boutons, polices",
+      onClick: () => navigate("/dashboard/apparence"),
+      gradient: "from-pink-500/20 to-rose-500/10",
+    },
     {
       icon: Globe,
       label: "Gestion de domaine",

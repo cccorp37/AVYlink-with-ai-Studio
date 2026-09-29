@@ -33,6 +33,7 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import type { Tables } from "@/lib/types";
 
 type Profile = Tables<"profiles">;
@@ -287,6 +288,9 @@ export default function DashboardOverview({ profile }: Props) {
           </motion.button>
         )}
       </motion.div>
+
+      {/* PWA in-app installation banner */}
+      <PWAInstallButton variant="banner" />
 
       {/* Profile completion */}
       <ProfileCompletion profile={profile} />

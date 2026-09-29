@@ -57,6 +57,7 @@ import { useToast } from "@/hooks/use-toast";
 import { firestoreDB as supabase } from "@/lib/db";
 import type { Tables } from "@/lib/types";
 import { VerifiedBadge, BADGE_STYLES } from "@/components/VerifiedBadge";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { motion } from "framer-motion";
 
 const PAGE_THEMES = [
@@ -1438,6 +1439,7 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
 
   // Links state for live phone preview
   const [links, setLinks] = useState<any[]>([]);
+  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("editor");
 
   const profileUrl = profile?.username
     ? `${window.location.origin}/u/${profile.username}`
@@ -1835,7 +1837,37 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
-      {/* Quick actions */}
+      {/* PWA in-app installation banner */}
+      <PWAInstallButton variant="banner" />
+
+      {/* Mobile view toggle (Édition vs Aperçu en direct) */}
+      <div className="flex md:hidden items-center p-1 bg-secondary/70 rounded-2xl border border-border/60 shadow-xs">
+        <button
+          onClick={() => setMobileTab("editor")}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === "editor"
+              ? "bg-card text-foreground shadow-xs border border-border/40"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Layers className="w-4 h-4 text-primary" />
+          <span>Édition ({blocks.length} blocs)</span>
+        </button>
+        <button
+          onClick={() => setMobileTab("preview")}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === "preview"
+              ? "gradient-cta text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Smartphone className="w-4 h-4" />
+          <span>Aperçu live</span>
+        </button>
+      </div>
+
+      <div className={mobileTab === "preview" ? "hidden md:block space-y-6" : "space-y-6"}>
+        {/* Quick actions */}
       <div className="flex gap-3">
         <button
           onClick={() => navigate("/dashboard/liens")}
@@ -2419,9 +2451,10 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
           </p>
         )}
       </div>
+      </div>
 
       {/* 📱 Live Preview (Aperçu en direct haute fidélité) */}
-      <div className="bg-card rounded-2xl border border-border/50 shadow-card p-5 space-y-4">
+      <div className={`bg-card rounded-2xl border border-border/50 shadow-card p-5 space-y-4 ${mobileTab === "editor" ? "hidden md:block" : "block"}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="font-dm font-bold text-base text-foreground flex items-center gap-2">
@@ -2610,6 +2643,31 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Mobile quick toggle pill */}
+      {mobileTab === "editor" ? (
+        <div className="md:hidden fixed bottom-20 right-4 z-40">
+          <Button
+            size="sm"
+            onClick={() => setMobileTab("preview")}
+            className="rounded-full shadow-xl gradient-cta text-primary-foreground font-bold text-xs gap-1.5 px-4 h-10 border border-white/20"
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>Aperçu live</span>
+          </Button>
+        </div>
+      ) : (
+        <div className="md:hidden fixed bottom-20 right-4 z-40">
+          <Button
+            size="sm"
+            onClick={() => setMobileTab("editor")}
+            className="rounded-full shadow-xl bg-card border border-border text-foreground font-bold text-xs gap-1.5 px-4 h-10"
+          >
+            <Layers className="w-4 h-4 text-primary" />
+            <span>Éditer ma page</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

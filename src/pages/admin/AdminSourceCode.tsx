@@ -12,6 +12,16 @@ const modules = import.meta.glob(
     "/index.html",
     "/README.md",
     "/package.json",
+    "/server.ts",
+    "/firestore.rules",
+    "/storage.rules",
+    "/firebase-blueprint.json",
+    "/firebase-applet-config.json",
+    "/vercel.json",
+    "/railway.json",
+    "/Procfile",
+    "/api/**/*.{ts,js,json}",
+    "/metadata.json",
     "/vite.config.ts",
     "/tailwind.config.ts",
     "/tsconfig.json",
@@ -24,6 +34,8 @@ const modules = import.meta.glob(
     "/src/**/*.{tsx,ts,jsx,js,css,html,md,json}",
     "/supabase-legacy-reference/**/*.{ts,tsx,js,sql,json,toml,md}",
     "/public/robots.txt",
+    "/public/manifest.webmanifest",
+    "/public/sw.js",
     "!**/node_modules/**",
     "!**/dist/**",
     "!**/build/**",
@@ -33,9 +45,25 @@ const modules = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.3.0";
 
 function categoryOf(path: string): string {
+  if (path === "/server.ts" || path.startsWith("/api/")) return "Backend & Serveur Express";
+  if (path === "/firestore.rules" || path === "/storage.rules")
+    return "Sécurité & Règles Cloud";
+  if (
+    path === "/vercel.json" ||
+    path === "/railway.json" ||
+    path === "/Procfile"
+  )
+    return "Déploiement (Vercel & Railway)";
+  if (
+    path === "/firebase-blueprint.json" ||
+    path === "/firebase-applet-config.json"
+  )
+    return "Configuration Firebase";
+  if (path === "/public/manifest.webmanifest" || path === "/public/sw.js")
+    return "PWA & Application Mobile";
   if (path.startsWith("/src/pages/admin/")) return "Admin — Pages";
   if (path.startsWith("/src/pages/dashboard/")) return "Dashboard — Pages";
   if (path.startsWith("/src/pages/")) return "Pages publiques";
@@ -49,14 +77,21 @@ function categoryOf(path: string): string {
   if (path.startsWith("/src/")) return "Source (racine)";
   if (path.startsWith("/supabase-legacy-reference/functions/"))
     return "Edge Functions (backend historique)";
-  if (path.startsWith("/supabase-legacy-reference/migrations/")) return "Migrations SQL (historique)";
-  if (path.startsWith("/supabase-legacy-reference/")) return "Configuration Supabase (historique)";
+  if (path.startsWith("/supabase-legacy-reference/migrations/"))
+    return "Migrations SQL (historique)";
+  if (path.startsWith("/supabase-legacy-reference/"))
+    return "Configuration Supabase (historique)";
   if (path.startsWith("/public/")) return "Public";
   return "Configuration projet";
 }
 
 const CATEGORY_ORDER = [
   "Configuration projet",
+  "Backend & Serveur Express",
+  "Déploiement (Vercel & Railway)",
+  "Sécurité & Règles Cloud",
+  "Configuration Firebase",
+  "PWA & Application Mobile",
   "Source (racine)",
   "Pages publiques",
   "Dashboard — Pages",
@@ -68,8 +103,8 @@ const CATEGORY_ORDER = [
   "Utilitaires",
   "Intégrations",
   "Configuration Supabase",
-  "Edge Functions (backend)",
-  "Migrations SQL",
+  "Edge Functions (backend historique)",
+  "Migrations SQL (historique)",
   "Public",
 ];
 
@@ -141,12 +176,20 @@ export default function AdminSourceCode() {
     lines.push(`  Lignes de code  : ${totalLines.toLocaleString("fr-FR")}`);
     lines.push(`  Taille totale   : ${humanBytes(totalBytes)}`);
     lines.push(
-      `  Stack technique : React 18 · Vite · TypeScript · Tailwind · shadcn/ui · Supabase`,
+      `  Stack technique : React 18 · Vite · TypeScript · Tailwind CSS · shadcn/ui · PWA`,
     );
     lines.push(
-      `  Backend         : Supabase (Auth, DB, RLS, Storage, Edge Functions)`,
+      `  Backend & API   : Node.js Express · Vercel Serverless (/api) · Firebase/Firestore & Auth`,
     );
-    lines.push(`  Paiements       : MeSomb (Mobile Money — Orange, MTN)`);
+    lines.push(
+      `  Déploiement     : Production-ready sur Vercel (vercel.json) & Railway (railway.json, Procfile)`,
+    );
+    lines.push(
+      `  PWA Mini-App    : Manifest Web PWA · Service Worker Workbox · Standalone iOS & Android`,
+    );
+    lines.push(
+      `  Paiements       : MeSomb (MTN Mobile Money, Orange Money, Retraits, Webhooks sécurisés)`,
+    );
     lines.push(bar);
     lines.push("");
 

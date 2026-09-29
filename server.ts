@@ -375,8 +375,120 @@ function verifyMeSombSignature(rawBody: string, signature: string | undefined): 
   }
 }
 
-async function startServer() {
-  const app = express();
+async function handlePaymentFulfillment({
+  type,
+  amount,
+  currency,
+  service,
+  phone,
+  userId,
+  walletId,
+  metadata,
+  txnId,
+  externalId,
+}: {
+  type?: string;
+  amount: number;
+  currency?: string;
+  service: string;
+  phone: string;
+  userId?: string;
+  walletId?: string | null;
+  metadata?: any;
+  txnId: string;
+  externalId: string;
+}) {
+  // 1. Subscription Plan Upgrade
+  if (type === "subscription" && metadata?.plan) {
+    try {
+      const profId = metadata.profile_id || (userId ? `prof_${userId}` : null);
+      if (profId) {
+        await safeDocUpdate("profiles", profId, {
+          plan: metadata.plan,
+          updated_at: FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (planErr) {
+      console.warn("Plan upgrade warning:", planErr);
+    }
+  }
+
+  // 2. Store Order creation (E-commerce / Boutique)
+  if (type === "order" && metadata?.item_id) {
+    try {
+      await safeCollectionAdd("orders", {
+        item_id: metadata.item_id,
+        item_name: metadata.item_name || "Article",
+        seller_profile_id: metadata.seller_profile_id || null,
+        buyer_name: metadata.buyer_name || "Client",
+        buyer_email: metadata.buyer_email || null,
+        phone_number: phone,
+        amount: Math.round(amount),
+        currency: currency || "XAF",
+        payment_status: "paid",
+        payment_method: service,
+        transaction_id: txnId,
+        reference: externalId,
+        created_at: FieldValue.serverTimestamp(),
+      });
+    } catch (orderErr) {
+      console.warn("Order creation warning:", orderErr);
+    }
+  }
+
+  // 3. Wallet Credit (Seller's wallet if store item, or User's wallet if deposit)
+  let targetWalletId = walletId;
+  if (type === "order" && metadata?.seller_profile_id) {
+    try {
+      const sellerProfileSnap = await db
+        .collection("profiles")
+        .doc(metadata.seller_profile_id)
+        .get();
+      if (sellerProfileSnap.exists) {
+        const sellerUserId = sellerProfileSnap.data()?.user_id;
+        if (sellerUserId) {
+          const sellerWalletQuery = await db
+            .collection("wallets")
+            .where("user_id", "==", sellerUserId)
+            .get();
+          if (!sellerWalletQuery.empty) {
+            targetWalletId = sellerWalletQuery.docs[0].id;
+          } else {
+            targetWalletId = await safeCollectionAdd("wallets", {
+              user_id: sellerUserId,
+              balance: 0,
+              currency: currency || "XAF",
+              created_at: FieldValue.serverTimestamp(),
+            });
+          }
+        }
+      }
+    } catch (wErr) {
+      console.warn("Seller wallet lookup warning:", wErr);
+    }
+  }
+
+  if (targetWalletId) {
+    try {
+      const walletDoc = await db.collection("wallets").doc(targetWalletId).get();
+      if (walletDoc.exists) {
+        const currentBalance = walletDoc.data()?.balance || 0;
+        const netAmount = Math.round(amount * (1 - PLATFORM_FEE_RATE));
+        await safeDocUpdate("wallets", targetWalletId, {
+          balance: currentBalance + netAmount,
+          updated_at: FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.warn("Wallet credit error:", err);
+    }
+  }
+}
+
+export const app = express();
+
+export async function startServer(options: { listen?: boolean } = {}) {
+  const { listen = true } = options;
   const PORT = Number(process.env.PORT) || 3000;
 
   app.use(cors());
@@ -991,22 +1103,18 @@ async function startServer() {
               processed_at: FieldValue.serverTimestamp(),
             });
 
-            // Credit wallet if sale or wallet top-up
-            if (walletId) {
-              try {
-                const walletDoc = await db.collection("wallets").doc(walletId).get();
-                if (walletDoc.exists) {
-                  const currentBalance = walletDoc.data()?.balance || 0;
-                  const netAmount = Math.round(amount * (1 - PLATFORM_FEE_RATE));
-                  await safeDocUpdate("wallets", walletId, {
-                    balance: currentBalance + netAmount,
-                    updated_at: FieldValue.serverTimestamp(),
-                  });
-                }
-              } catch (err) {
-                console.warn("Wallet credit error:", err);
-              }
-            }
+            await handlePaymentFulfillment({
+              type,
+              amount,
+              currency,
+              service,
+              phone,
+              userId,
+              walletId,
+              metadata,
+              txnId,
+              externalId,
+            });
 
             return res.json({
               success: true,
@@ -1033,6 +1141,18 @@ async function startServer() {
             mesomb_transaction_id: mockMesombId,
             processed_at: FieldValue.serverTimestamp(),
           });
+          await handlePaymentFulfillment({
+            type,
+            amount,
+            currency,
+            service,
+            phone,
+            userId,
+            walletId,
+            metadata,
+            txnId,
+            externalId,
+          });
           return res.json({
             success: true,
             transaction_id: txnId,
@@ -1049,21 +1169,18 @@ async function startServer() {
           processed_at: FieldValue.serverTimestamp(),
         });
 
-        if (walletId) {
-          try {
-            const walletDoc = await db.collection("wallets").doc(walletId).get();
-            if (walletDoc.exists) {
-              const currentBalance = walletDoc.data()?.balance || 0;
-              const netAmount = Math.round(amount * (1 - PLATFORM_FEE_RATE));
-              await safeDocUpdate("wallets", walletId, {
-                balance: currentBalance + netAmount,
-                updated_at: FieldValue.serverTimestamp(),
-              });
-            }
-          } catch (err) {
-            console.warn("Wallet balance update warning:", err);
-          }
-        }
+        await handlePaymentFulfillment({
+          type,
+          amount,
+          currency,
+          service,
+          phone,
+          userId,
+          walletId,
+          metadata,
+          txnId,
+          externalId,
+        });
 
         return res.json({
           success: true,
@@ -1396,9 +1513,15 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`AvyLink Server running on http://0.0.0.0:${PORT}`);
-  });
+  if (listen) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`AvyLink Server running on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
-startServer();
+export default app;
+
+if (!process.env.VERCEL) {
+  startServer();
+}

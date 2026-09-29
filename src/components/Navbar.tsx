@@ -1,4 +1,5 @@
 import { Menu, X, LogOut } from "lucide-react";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ const Navbar = () => {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
+            <PWAInstallButton variant="outline" size="sm" />
             {user ? (
               <>
                 <Button
@@ -135,6 +137,7 @@ const Navbar = () => {
               </a>
             ))}
             <div className="pt-3 flex flex-col gap-2 border-t border-border/50">
+              <PWAInstallButton variant="banner" />
               {user ? (
                 <Button
                   variant="outline"

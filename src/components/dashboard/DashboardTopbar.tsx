@@ -144,10 +144,11 @@ export function DashboardTopbar({ profile, title, onMobileMenuOpen }: Props) {
             href={profileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl border border-border/60 hover:border-primary/30 hover:text-primary text-muted-foreground transition-all"
+            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 sm:px-3 py-2 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary transition-all"
+            title="Voir ma page publique"
           >
             <Eye className="w-3.5 h-3.5" />
-            {t("profile")}
+            <span className="hidden sm:inline">{t("profile")}</span>
           </motion.a>
         )}
 

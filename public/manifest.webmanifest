@@ -1,24 +1,38 @@
 {
+  "id": "/",
   "name": "AvyLink — Ton univers en un seul lien",
   "short_name": "AvyLink",
   "description": "Crée ta page de liens et ton portfolio personnalisé en quelques minutes. Centralise tes réseaux sociaux, tes produits et tes contenus.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0EAAF0",
   "theme_color": "#0EAAF0",
   "orientation": "portrait-primary",
   "icons": [
     {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/icon-192.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     },
     {
       "src": "/icon-192.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }

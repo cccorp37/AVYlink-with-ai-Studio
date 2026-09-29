@@ -61,31 +61,30 @@ const Footer = () => {
             {
               title: "Produit",
               links: [
-                "Fonctionnalités",
-                "Tarifs",
-                "Templates",
-                "Démo live",
-                "Changelog",
+                { label: "Fonctionnalités", href: "#fonctionnalites" },
+                { label: "Tarifs", href: "#tarifs" },
+                { label: "Templates", href: "/dashboard/apparence" },
+                { label: "Démo live", href: "/u/avydigitalgroup" },
+                { label: "Installer l'app (PWA)", href: "/installer" },
               ],
             },
             {
               title: "Ressources",
               links: [
-                "Documentation",
-                "Blog",
-                "Tutoriels vidéo",
-                "API",
-                "Statut",
+                { label: "Documentation", href: "/dashboard/aide" },
+                { label: "Assistance", href: "/dashboard/support" },
+                { label: "API Développeurs", href: "/dashboard/api" },
+                { label: "Statut des services", href: "/dashboard/aide" },
               ],
             },
             {
               title: "Entreprise",
               links: [
-                "À propos",
-                "Contact",
-                "Partenaires",
-                "Mentions légales",
-                "Confidentialité",
+                { label: "À propos", href: "#" },
+                { label: "Contact", href: "/dashboard/support" },
+                { label: "Portefeuille & Retraits", href: "/dashboard/portefeuille" },
+                { label: "Mentions légales", href: "#" },
+                { label: "Confidentialité", href: "#" },
               ],
             },
           ].map((col) => (
@@ -95,12 +94,12 @@ const Footer = () => {
               </h4>
               <ul className="space-y-2.5">
                 {col.links.map((link) => (
-                  <li key={link}>
+                  <li key={link.label}>
                     <a
-                      href="#"
+                      href={link.href}
                       className="text-white/35 hover:text-white text-sm transition-colors"
                     >
-                      {link}
+                      {link.label}
                     </a>
                   </li>
                 ))}

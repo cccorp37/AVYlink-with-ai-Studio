@@ -15,6 +15,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/hooks/useLanguage";
 import SplashScreen from "@/components/SplashScreen";
 import { MaintenanceGuard } from "@/components/MaintenanceGuard";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => {
             <LanguageProvider>
               <Toaster />
               <Sonner />
+              <OfflineIndicator />
               {!splashDone && (
                 <SplashScreen onComplete={handleSplashComplete} />
               )}
@@ -55,6 +57,7 @@ const App = () => {
                     <Route path="/@:username" element={<PublicProfile />} />
                     <Route path="/p/:username" element={<PublicProfile />} />
                     <Route path="/install" element={<InstallApp />} />
+                    <Route path="/installer" element={<InstallApp />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>

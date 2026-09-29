@@ -127,11 +127,7 @@ export function MobileBottomNav({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 60 }}
               transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-              className="md:hidden fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[56] rounded-2xl border border-border/60 shadow-xl overflow-hidden"
-              style={{
-                background: "rgba(255,255,255,0.95)",
-                backdropFilter: "blur(20px)",
-              }}
+              className="md:hidden fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[56] rounded-2xl border border-border/80 shadow-2xl overflow-hidden bg-card/95 backdrop-blur-2xl"
             >
               <div className="px-4 py-3 border-b border-border/40">
                 <p className="text-xs font-semibold text-foreground">
@@ -205,14 +201,7 @@ export function MobileBottomNav({
       </AnimatePresence>
 
       {/* Bottom nav */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-inset-bottom"
-        style={{
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          borderTop: "1px solid hsl(210 20% 91% / 0.6)",
-        }}
-      >
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-inset-bottom bg-background/90 backdrop-blur-2xl border-t border-border/80 shadow-lg">
         <div className="flex items-stretch">
           <button
             onClick={() => setShowSwitcher(!showSwitcher)}

@@ -177,6 +177,33 @@ const AVATAR_POSITIONS = [
   { id: "right", label: "Droite", icon: AlignRight },
 ];
 
+const LAYOUT_STYLES = [
+  {
+    id: "classic",
+    label: "Classique",
+    desc: "Couverture + liens empilés",
+    emoji: "📱",
+  },
+  {
+    id: "bento",
+    label: "Grille Bento",
+    desc: "Tuiles 2 colonnes modernes",
+    emoji: "🍱",
+  },
+  {
+    id: "minimal_card",
+    label: "Carte vCard",
+    desc: "Carte de visite flottante",
+    emoji: "📇",
+  },
+  {
+    id: "hero_cover",
+    label: "Poster Hero",
+    desc: "Grande bannière immersive",
+    emoji: "🎬",
+  },
+];
+
 const BG_COLORS = [
   "#ffffff",
   "#f8fafc",
@@ -229,6 +256,9 @@ export default function DashboardAppearance({ profile, onUpdate }: Props) {
   const [selectedAvatarPos, setSelectedAvatarPos] = useState(
     (profile as any)?.avatar_position || "center",
   );
+  const [selectedLayout, setSelectedLayout] = useState(
+    (profile as any)?.layout_style || "classic",
+  );
   const [selectedBgColor, setSelectedBgColor] = useState(
     profile?.background_color || "#ffffff",
   );
@@ -264,19 +294,21 @@ export default function DashboardAppearance({ profile, onUpdate }: Props) {
       button_style: selectedButton,
       font_style: selectedFont,
       background_color: selectedBgColor,
+      layout_style: selectedLayout,
     } as any);
-    // Save avatar_position and background_image_url via direct update
+    // Save avatar_position, layout_style and background_image_url via direct update
     if (profile) {
       await supabase
         .from("profiles")
         .update({
           avatar_position: selectedAvatarPos,
+          layout_style: selectedLayout,
           background_image_url: bgImageUrl || null,
         } as any)
         .eq("id", profile.id);
     }
     setSaving(false);
-    toast({ title: "✅ Apparence sauvegardée !" });
+    toast({ title: "✅ Apparence et disposition sauvegardées !" });
   };
 
   const handleBgImageUpload = async (
@@ -403,6 +435,51 @@ export default function DashboardAppearance({ profile, onUpdate }: Props) {
           </motion.div>
         );
       })()}
+
+      {/* 🍱 Architecture & Disposition de la page */}
+      <motion.div
+        custom={-0.7}
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp}
+        className="rounded-2xl border border-border/40 shadow-card p-5 bg-card space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-dm font-bold text-base text-foreground">
+              Disposition architecturale de la page
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Change la structure visuelle de ton profil public (Classique, Grille Bento, Carte vCard, Poster Hero)
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+          {LAYOUT_STYLES.map((ls) => {
+            const active = selectedLayout === ls.id;
+            return (
+              <button
+                key={ls.id}
+                type="button"
+                onClick={() => setSelectedLayout(ls.id)}
+                className={`p-3 rounded-xl border-2 text-left transition-all flex flex-col gap-1 ${
+                  active
+                    ? "border-primary bg-primary/10 shadow-xs"
+                    : "border-border/50 bg-secondary/20 hover:border-primary/30"
+                }`}
+              >
+                <span className="text-lg">{ls.emoji}</span>
+                <span className="font-dm font-bold text-xs text-foreground">
+                  {ls.label}
+                </span>
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  {ls.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
 
       {/* ⚡ Modèles Clé en Main (1-Click) */}
       <motion.div

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Crown,
   Search,
@@ -8,6 +9,13 @@ import {
   X,
   Eye,
   Smartphone,
+  ShoppingBag,
+  Clock,
+  Star,
+  MessageCircle,
+  Heart,
+  Layers,
+  UserPlus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { firestoreDB as supabase } from "@/lib/db";
@@ -1065,6 +1073,187 @@ function ExtraBlockPreview({
   return null;
 }
 
+function getTemplateLayoutStyle(tpl: TemplateDef): "minimal_card" | "hero_cover" | "bento" | "classic" {
+  if (tpl.category === "Carte de visite") return "minimal_card";
+  if (tpl.category === "Festival" || tpl.category === "Animation") return "hero_cover";
+  if (tpl.category === "Boutique" || tpl.category === "Créatif" || tpl.category === "Néon") return "bento";
+  return "classic";
+}
+
+function getTemplateFeaturePills(tpl: TemplateDef): string[] {
+  switch (tpl.category) {
+    case "Carte de visite":
+      return ["📇 Contact vCard", "💬 WhatsApp", "📋 Formulaire"];
+    case "Boutique":
+      return ["🛍️ Catalogue", "📱 Mobile Money", "⭐ Avis 5★"];
+    case "Festival":
+    case "Animation":
+      return ["⏳ Compte à rebours", "🎟️ Billetterie", "🎬 Vidéo HD"];
+    case "Créatif":
+    case "Néon":
+      return ["🍱 Grille Bento", "❤️ Pourboire", "🎵 Audio"];
+    default:
+      return ["✨ Éditorial", "❓ FAQ", "⭐ Témoignages"];
+  }
+}
+
+function getTemplateStarterBlocks(tpl: TemplateDef) {
+  const p = tpl.preview;
+  if (tpl.category === "Boutique") {
+    return [
+      {
+        type: "heading",
+        title: "Catalogue",
+        content: {
+          text: p.buttons[0]?.label || "Nos meilleures ventes 🔥",
+          subtitle: "Paiement sécurisé via Orange Money & MTN MoMo",
+        },
+      },
+      {
+        type: "whatsapp_cta",
+        title: "Commande rapide WhatsApp",
+        content: {
+          phone: "237690000000",
+          button_text: "Commander sur WhatsApp",
+          subtitle: "Livraison express & conseils personnalisés",
+          message: `Bonjour ${p.displayName}, je souhaite commander un article vu sur votre boutique AvyLink !`,
+        },
+      },
+      {
+        type: "testimonials",
+        title: "Avis de nos clients",
+        content: {
+          items: [
+            {
+              author: "Sarah M.",
+              role: "Cliente vérifiée • Douala",
+              comment: "Qualité incroyable et livraison super rapide ! Je recommande à 100%.",
+              rating: 5,
+            },
+            {
+              author: "Marc K.",
+              role: "Client vérifié • Yaoundé",
+              comment: "Paiement Mobile Money fluide en 10 secondes.",
+              rating: 5,
+            },
+          ],
+        },
+      },
+      {
+        type: "faq",
+        title: "Questions fréquentes",
+        content: {
+          items: [
+            {
+              question: "Quels sont les moyens de paiement acceptés ?",
+              answer: "Nous acceptons Orange Money et MTN Mobile Money directement depuis cette page.",
+            },
+            {
+              question: "Quels sont les délais de livraison ?",
+              answer: "Accès immédiat pour les produits digitaux et 24h à 48h pour les articles physiques.",
+            },
+          ],
+        },
+      },
+    ];
+  }
+
+  if (tpl.category === "Carte de visite") {
+    return [
+      {
+        type: "whatsapp_cta",
+        title: "Contact Direct",
+        content: {
+          phone: "237690000000",
+          button_text: "Écrire sur WhatsApp Direct",
+          subtitle: `${p.displayName} • ${p.subtitle}`,
+          message: `Bonjour ${p.displayName}, j'ai consulté votre carte de visite digitale AvyLink.`,
+        },
+      },
+      {
+        type: "testimonials",
+        title: "Recommandations",
+        content: {
+          items: [
+            {
+              author: "Jean-Paul N.",
+              role: "Directeur Général",
+              comment: "Un professionnel rigoureux, réactif et orienté résultats.",
+              rating: 5,
+            },
+          ],
+        },
+      },
+      {
+        type: "form",
+        title: "Prendre rendez-vous",
+        content: {
+          formTitle: p.extraBlock?.data?.title || "Demander un devis ou rendez-vous",
+          successMessage: "Merci ! Votre message a bien été transmis.",
+          includeMessage: true,
+        },
+      },
+    ];
+  }
+
+  if (tpl.category === "Festival" || tpl.category === "Animation") {
+    const inFiveDays = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 16);
+    return [
+      {
+        type: "countdown",
+        title: "Prochain Événement Live",
+        content: {
+          target_date: inFiveDays,
+          subtitle: `${p.displayName} — Places limitées !`,
+          cta_text: p.buttons[0]?.label || "Réserver mon pass",
+          cta_url: "https://avylink.com",
+        },
+      },
+      {
+        type: "tip_jar",
+        title: "Soutenir le projet",
+        content: {
+          description: "Soutenez nos créations directement via Orange Money & MTN MoMo ❤️",
+          amounts: [500, 1000, 2500, 5000],
+        },
+      },
+    ];
+  }
+
+  return [
+    {
+      type: "tip_jar",
+      title: "Soutenir mon travail",
+      content: {
+        description: "Offrez-moi un café via Mobile Money pour soutenir mes contenus ❤️",
+        amounts: [500, 1000, 2500, 5000],
+      },
+    },
+    {
+      type: "whatsapp_cta",
+      title: "Me contacter",
+      content: {
+        phone: "237690000000",
+        button_text: "Discuter sur WhatsApp",
+        subtitle: "Collaborations & partenariats",
+        message: `Bonjour ${p.displayName}, je vous contacte depuis votre page AvyLink !`,
+      },
+    },
+    {
+      type: "faq",
+      title: "À savoir",
+      content: {
+        items: [
+          {
+            question: "Comment collaborer avec moi ?",
+            answer: "Cliquez sur le bouton WhatsApp ou envoyez une demande via le formulaire de contact.",
+          },
+        ],
+      },
+    },
+  ];
+}
+
 // === Template Card ===
 function TemplateCard({
   tpl,
@@ -1081,6 +1270,8 @@ function TemplateCard({
 }) {
   const [hovered, setHovered] = useState(false);
   const p = tpl.preview;
+  const layoutStyle = getTemplateLayoutStyle(tpl);
+  const featurePills = getTemplateFeaturePills(tpl);
   const btnRadius =
     tpl.button_style === "pill"
       ? "9999px"
@@ -1097,171 +1288,462 @@ function TemplateCard({
       initial="hidden"
       animate="visible"
       layout
-      className="relative rounded-2xl overflow-hidden border border-border/50 bg-card/80 backdrop-blur-sm cursor-pointer group"
+      className="relative rounded-2xl overflow-hidden border border-border/50 bg-card/80 backdrop-blur-sm cursor-pointer group flex flex-col justify-between"
       style={{ boxShadow: "0 4px 24px -4px rgba(0,0,0,0.08)" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      whileHover={{ y: -4, scale: 1.02 }}
+      whileHover={{ y: -4, scale: 1.015 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
     >
       {tpl.isPro && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ delay: 0.3, type: "spring" }}
-          className="absolute top-2.5 right-2.5 z-20 w-7 h-7 rounded-full flex items-center justify-center shadow-lg"
+          transition={{ delay: 0.2, type: "spring" }}
+          className="absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg text-[9px] font-extrabold text-amber-950"
           style={{ background: "linear-gradient(135deg, #fbbf24, #f59e0b)" }}
         >
-          <Crown className="w-3.5 h-3.5 text-amber-900" />
+          <Crown className="w-3 h-3 text-amber-950" /> PRO
         </motion.div>
       )}
 
-      {/* Mini profile preview */}
-      <div className="relative" style={{ background: p.cardBg }}>
-        <div
-          className="h-16 relative overflow-hidden"
-          style={{ background: p.coverBg }}
-        >
-          {p.coverOverlay && (
+      {/* Distinct Architectural Mini Preview */}
+      <div className="relative flex-1 flex flex-col justify-between" style={{ background: p.cardBg }}>
+        {/* 1. CARTE DE VISITE LAYOUT (minimal_card) */}
+        {layoutStyle === "minimal_card" ? (
+          <div className="p-3 space-y-2">
             <div
-              className="absolute inset-0"
-              style={{ background: p.coverOverlay }}
-            />
-          )}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.12),transparent_60%)]" />
-        </div>
-
-        <div className="flex justify-center -mt-6 relative z-10">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-[2.5px] shadow-md"
-            style={{
-              background: p.avatarBg,
-              borderColor:
-                typeof p.cardBg === "string" && p.cardBg.startsWith("linear")
-                  ? "rgba(255,255,255,0.5)"
-                  : p.cardBg,
-              color: "#fff",
-            }}
-          >
-            {p.avatarInitial}
-          </div>
-        </div>
-
-        <div className="px-3 pt-1.5 pb-2.5 text-center">
-          <p
-            className="font-bold text-[11px] truncate"
-            style={{ color: p.textColor }}
-          >
-            {p.displayName}
-          </p>
-          <p
-            className="text-[9px] mt-0.5 leading-tight line-clamp-2"
-            style={{ color: p.subtitleColor }}
-          >
-            {p.subtitle}
-          </p>
-
-          {p.badge && (
-            <span
-              className="inline-block mt-1 text-[8px] font-semibold px-1.5 py-px rounded-full"
+              className="rounded-xl p-2.5 border shadow-sm"
               style={{
-                background: `${p.accentColor}15`,
-                color: p.accentColor,
-                border: `1px solid ${p.accentColor}30`,
+                background: "rgba(255,255,255,0.08)",
+                borderColor: `${p.accentColor}35`,
+                backdropFilter: "blur(8px)",
               }}
             >
-              {p.badge}
-            </span>
-          )}
-
-          {p.bio && (
-            <p
-              className="text-[8px] mt-1 leading-tight line-clamp-2 px-1"
-              style={{ color: p.subtitleColor }}
-            >
-              {p.bio}
-            </p>
-          )}
-
-          {p.socials && p.socials.length > 0 && (
-            <div className="flex items-center justify-center gap-1.5 mt-1.5">
-              {p.socials.slice(0, 5).map((s) => (
-                <SocialIcon key={s} platform={s} size={12} />
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold shadow-md flex-shrink-0"
+                  style={{ background: p.avatarBg, color: "#fff" }}
+                >
+                  {p.avatarInitial}
+                </div>
+                <div className="min-w-0 text-left flex-1">
+                  <div className="flex items-center gap-1">
+                    <p className="font-bold text-[11px] truncate" style={{ color: p.textColor }}>
+                      {p.displayName}
+                    </p>
+                    <span className="w-3 h-3 rounded-full bg-sky-500 text-white text-[7px] flex items-center justify-center flex-shrink-0">
+                      ✓
+                    </span>
+                  </div>
+                  <p className="text-[8px] truncate" style={{ color: p.subtitleColor }}>
+                    {p.subtitle}
+                  </p>
+                  <span
+                    className="inline-block mt-0.5 text-[7px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: `${p.accentColor}20`, color: p.accentColor }}
+                  >
+                    {p.badge || "vCard Pro"}
+                  </span>
+                </div>
+              </div>
+              {/* Quick Contact Action Bar */}
+              <div className="grid grid-cols-3 gap-1 mt-2">
+                {["📞 Appel", "💬 WhatsApp", "📇 Contact"].map((act) => (
+                  <div
+                    key={act}
+                    className="py-1 rounded-md text-[7px] font-bold text-center truncate"
+                    style={{
+                      background: `${p.accentColor}18`,
+                      color: p.textColor,
+                      border: `1px solid ${p.accentColor}30`,
+                    }}
+                  >
+                    {act}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Buttons */}
+            <div className="space-y-1">
+              {p.buttons.slice(0, 2).map((btn, i) => (
+                <div
+                  key={i}
+                  className="w-full py-1.5 px-2.5 text-[8px] font-semibold flex items-center justify-between truncate"
+                  style={{
+                    background: btn.bg,
+                    color: btn.textColor,
+                    border: btn.border || "none",
+                    borderRadius: btnRadius,
+                  }}
+                >
+                  <span className="truncate">
+                    {btn.icon ? `${btn.icon} ` : ""}
+                    {btn.label}
+                  </span>
+                  <span>→</span>
+                </div>
               ))}
             </div>
-          )}
-
-          <div className="mt-2 space-y-1">
-            {p.buttons.slice(0, 3).map((btn, i) => (
+          </div>
+        ) : /* 2. BOUTIQUE E-COMMERCE LAYOUT */
+        tpl.category === "Boutique" ? (
+          <div>
+            <div
+              className="h-14 relative overflow-hidden flex items-end p-2"
+              style={{ background: p.coverBg }}
+            >
+              <span className="px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-xs text-[7px] font-bold text-white uppercase tracking-wider">
+                🛍️ Boutique Mobile Money
+              </span>
+            </div>
+            <div className="px-2.5 -mt-5 relative z-10 flex items-end justify-between">
               <div
-                key={i}
-                className="w-full py-1 px-2 text-[9px] font-medium text-center truncate"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold border-2 shadow-md"
+                style={{ background: p.avatarBg, borderColor: "#fff", color: "#fff" }}
+              >
+                {p.avatarInitial}
+              </div>
+              <span
+                className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: `${p.accentColor}20`, color: p.accentColor }}
+              >
+                ★ 4.9 (120+)
+              </span>
+            </div>
+            <div className="p-2.5 space-y-2">
+              <div className="text-left">
+                <p className="font-bold text-[10px] truncate" style={{ color: p.textColor }}>
+                  {p.displayName}
+                </p>
+                <p className="text-[8px] truncate" style={{ color: p.subtitleColor }}>
+                  {p.subtitle}
+                </p>
+              </div>
+              {/* 2-Column Mini Product Grid */}
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { title: p.buttons[0]?.label || "Pack Pro", price: "15 000 F" },
+                  { title: p.buttons[1]?.label || "Article VIP", price: "8 500 F" },
+                ].map((prod, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-lg p-1.5 text-left border"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      borderColor: `${p.accentColor}30`,
+                    }}
+                  >
+                    <div
+                      className="h-7 rounded mb-1 flex items-center justify-center text-[10px]"
+                      style={{ background: `${p.accentColor}22` }}
+                    >
+                      {idx === 0 ? "📦" : "✨"}
+                    </div>
+                    <p
+                      className="text-[8px] font-bold truncate"
+                      style={{ color: p.textColor }}
+                    >
+                      {prod.title}
+                    </p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span
+                        className="text-[7px] font-extrabold"
+                        style={{ color: p.accentColor }}
+                      >
+                        {prod.price}
+                      </span>
+                      <span
+                        className="px-1 py-px rounded text-[6px] font-bold text-white"
+                        style={{ background: p.accentColor }}
+                      >
+                        Acheter
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* WhatsApp Express Bar */}
+              <div className="py-1 px-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center gap-1 text-[8px] font-bold text-emerald-500">
+                <span>💬 Commander sur WhatsApp</span>
+              </div>
+            </div>
+          </div>
+        ) : /* 3. FESTIVAL & ANIMATION LAYOUT (hero_cover + countdown) */
+        layoutStyle === "hero_cover" ? (
+          <div>
+            <div
+              className="h-24 relative overflow-hidden flex flex-col justify-end p-2.5 text-left"
+              style={{ background: p.coverBg }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+              <div className="relative z-10 flex items-center gap-2">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border border-white shadow"
+                  style={{ background: p.avatarBg, color: "#fff" }}
+                >
+                  {p.avatarInitial}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-[10px] text-white truncate">
+                    {p.displayName}
+                  </p>
+                  <p className="text-[8px] text-white/80 truncate">{p.subtitle}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-2.5 space-y-2">
+              {/* Mini Countdown Timer */}
+              <div
+                className="rounded-lg p-1.5 border"
                 style={{
-                  background: btn.bg,
-                  color: btn.textColor,
-                  border: btn.border || "none",
+                  background: `${p.accentColor}12`,
+                  borderColor: `${p.accentColor}30`,
+                }}
+              >
+                <p
+                  className="text-[7px] font-bold uppercase tracking-wider text-center mb-1"
+                  style={{ color: p.accentColor }}
+                >
+                  ⏳ Événement dans
+                </p>
+                <div className="grid grid-cols-4 gap-1 text-center">
+                  {[
+                    { v: "04", l: "J" },
+                    { v: "18", l: "H" },
+                    { v: "42", l: "M" },
+                    { v: "19", l: "S" },
+                  ].map((t) => (
+                    <div
+                      key={t.l}
+                      className="rounded py-0.5 text-[8px] font-extrabold"
+                      style={{
+                        background: "rgba(0,0,0,0.18)",
+                        color: p.textColor,
+                      }}
+                    >
+                      {t.v}
+                      <span className="text-[6px] opacity-70">{t.l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {p.buttons.slice(0, 2).map((btn, i) => (
+                <div
+                  key={i}
+                  className="w-full py-1 px-2 text-[8px] font-bold text-center truncate"
+                  style={{
+                    background: btn.bg,
+                    color: btn.textColor,
+                    border: btn.border || "none",
+                    borderRadius: btnRadius,
+                  }}
+                >
+                  {btn.icon ? `${btn.icon} ` : ""}
+                  {btn.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : /* 4. BENTO GRID LAYOUT (Créatif / Néon) */
+        layoutStyle === "bento" ? (
+          <div>
+            <div
+              className="h-14 relative overflow-hidden"
+              style={{ background: p.coverBg }}
+            />
+            <div className="px-3 -mt-5 relative z-10 flex items-center gap-2">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-bold border-2 shadow-md flex-shrink-0"
+                style={{ background: p.avatarBg, borderColor: "#fff", color: "#fff" }}
+              >
+                {p.avatarInitial}
+              </div>
+              <div className="min-w-0 text-left pt-4">
+                <p className="font-bold text-[10px] truncate" style={{ color: p.textColor }}>
+                  {p.displayName}
+                </p>
+                <p className="text-[8px] truncate" style={{ color: p.subtitleColor }}>
+                  {p.subtitle}
+                </p>
+              </div>
+            </div>
+            {/* Bento Tiles */}
+            <div className="p-2.5 grid grid-cols-2 gap-1.5">
+              <div
+                className="col-span-2 py-1.5 px-2.5 text-[8px] font-bold text-left flex items-center justify-between truncate"
+                style={{
+                  background: p.buttons[0]?.bg || p.accentColor,
+                  color: p.buttons[0]?.textColor || "#fff",
                   borderRadius: btnRadius,
                 }}
               >
-                {btn.icon ? `${btn.icon}  ` : ""}
-                {btn.label}
+                <span className="truncate">
+                  {p.buttons[0]?.icon || "🔥"} {p.buttons[0]?.label}
+                </span>
+                <span>↗</span>
               </div>
-            ))}
+              {p.buttons.slice(1, 3).map((btn, i) => (
+                <div
+                  key={i}
+                  className="p-2 flex flex-col justify-between text-left min-h-[44px]"
+                  style={{
+                    background: btn.bg,
+                    color: btn.textColor,
+                    border: btn.border || `1px solid ${p.accentColor}30`,
+                    borderRadius: btnRadius,
+                  }}
+                >
+                  <span className="text-[10px]">{btn.icon || (i === 0 ? "🎨" : "⚡")}</span>
+                  <span className="text-[8px] font-bold truncate">{btn.label}</span>
+                </div>
+              ))}
+              {/* Tip Jar mini bar */}
+              <div
+                className="col-span-2 py-1 px-2 rounded-lg flex items-center justify-between text-[7px] font-bold"
+                style={{
+                  background: `${p.accentColor}18`,
+                  color: p.textColor,
+                  border: `1px solid ${p.accentColor}30`,
+                }}
+              >
+                <span>❤️ Pourboire Mobile Money</span>
+                <span
+                  className="px-1.5 py-0.5 rounded text-white"
+                  style={{ background: p.accentColor }}
+                >
+                  1 000 F
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {tpl.preview.extraBlock && (
-          <ExtraBlockPreview
-            block={tpl.preview.extraBlock}
-            accentColor={p.accentColor}
-            textColor={p.textColor}
-          />
+        ) : (
+          /* 5. CLASSIC / EDITORIAL LAYOUT (Minimaliste / Pastel) */
+          <div>
+            <div
+              className="h-14 relative overflow-hidden"
+              style={{ background: p.coverBg }}
+            />
+            <div className="flex justify-center -mt-6 relative z-10">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold border-2 shadow-md"
+                style={{
+                  background: p.avatarBg,
+                  borderColor: "#fff",
+                  color: "#fff",
+                }}
+              >
+                {p.avatarInitial}
+              </div>
+            </div>
+            <div className="px-3 pt-1.5 pb-2.5 text-center space-y-1.5">
+              <div>
+                <p className="font-bold text-[11px] truncate" style={{ color: p.textColor }}>
+                  {p.displayName}
+                </p>
+                <p className="text-[8px] truncate" style={{ color: p.subtitleColor }}>
+                  {p.subtitle}
+                </p>
+              </div>
+              {p.socials && p.socials.length > 0 && (
+                <div className="flex items-center justify-center gap-1.5">
+                  {p.socials.slice(0, 4).map((s) => (
+                    <SocialIcon key={s} platform={s} size={11} />
+                  ))}
+                </div>
+              )}
+              <div className="space-y-1">
+                {p.buttons.slice(0, 2).map((btn, i) => (
+                  <div
+                    key={i}
+                    className="w-full py-1 px-2 text-[8px] font-medium text-center truncate"
+                    style={{
+                      background: btn.bg,
+                      color: btn.textColor,
+                      border: btn.border || "none",
+                      borderRadius: btnRadius,
+                    }}
+                  >
+                    {btn.icon ? `${btn.icon} ` : ""}
+                    {btn.label}
+                  </div>
+                ))}
+              </div>
+              {/* Testimonial snippet */}
+              <div
+                className="p-1.5 rounded-lg text-left"
+                style={{
+                  background: `${p.accentColor}12`,
+                  border: `1px solid ${p.accentColor}25`,
+                }}
+              >
+                <p className="text-[7px] italic truncate" style={{ color: p.textColor }}>
+                  ★★★★★ "Service exceptionnel et très fluide !"
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="px-3 py-2 border-t border-border/30 bg-card/90">
-        <div className="flex items-center justify-between">
+      {/* Card Footer with Included Features */}
+      <div className="px-3 py-2.5 border-t border-border/40 bg-card/95 space-y-1.5">
+        <div className="flex items-center justify-between gap-1">
           <div className="min-w-0">
-            <p className="font-semibold text-[11px] text-foreground truncate">
+            <p className="font-bold text-[11px] text-foreground truncate">
               {tpl.name}
             </p>
             <p className="text-[9px] text-muted-foreground">{tpl.category}</p>
           </div>
           <span
-            className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 ${tpl.isPro ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"}`}
+            className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 ${
+              tpl.isPro
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300"
+                : "bg-primary/10 text-primary"
+            }`}
           >
             {tpl.isPro ? "Pro" : "Gratuit"}
           </span>
         </div>
+        <div className="flex flex-wrap gap-1">
+          {featurePills.slice(0, 2).map((fp) => (
+            <span
+              key={fp}
+              className="text-[8px] px-1.5 py-0.5 rounded-md bg-secondary/70 text-muted-foreground font-medium"
+            >
+              {fp}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Hover overlay */}
+      {/* Hover / Tap overlay */}
       <AnimatePresence>
         {hovered && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 z-30 bg-foreground/60 backdrop-blur-[3px] flex flex-col items-center justify-center gap-2"
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 z-30 bg-black/65 backdrop-blur-[3px] flex flex-col items-center justify-center gap-2 p-3"
           >
             <motion.button
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
+              exit={{ scale: 0.85, opacity: 0 }}
               onClick={onPreview}
-              className="px-4 py-2 bg-background text-foreground rounded-xl font-semibold text-xs shadow-xl hover:bg-primary hover:text-primary-foreground transition-colors flex items-center gap-1.5"
+              className="w-full max-w-[150px] py-2 bg-background text-foreground rounded-xl font-bold text-xs shadow-xl hover:bg-primary hover:text-primary-foreground transition-colors flex items-center justify-center gap-1.5"
             >
-              <Eye className="w-3.5 h-3.5" /> Aperçu
+              <Eye className="w-3.5 h-3.5" /> Aperçu riche
             </motion.button>
             <motion.button
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ delay: 0.05 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ delay: 0.04 }}
               onClick={onUse}
               disabled={applying}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-semibold text-xs shadow-xl hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+              className="w-full max-w-[150px] py-2 gradient-cta text-primary-foreground rounded-xl font-bold text-xs shadow-xl hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5"
             >
               {applying ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1282,14 +1764,18 @@ function TemplatePreviewModal({
   tpl,
   onClose,
   onUse,
+  onUseWithBlocks,
   applying,
 }: {
   tpl: TemplateDef;
   onClose: () => void;
   onUse: () => void;
+  onUseWithBlocks: () => void;
   applying: boolean;
 }) {
   const p = tpl.preview;
+  const layoutStyle = getTemplateLayoutStyle(tpl);
+  const featurePills = getTemplateFeaturePills(tpl);
   const btnRadius =
     tpl.button_style === "pill"
       ? "9999px"
@@ -1297,7 +1783,7 @@ function TemplatePreviewModal({
         ? "0"
         : tpl.button_style === "square"
           ? "6px"
-          : "12px";
+          : "14px";
   const fontStyle =
     tpl.font_style === "dm"
       ? { fontFamily: "DM Sans, sans-serif" }
@@ -1310,111 +1796,194 @@ function TemplatePreviewModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.85, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="relative w-full max-w-[380px] flex flex-col items-center"
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        className="relative w-full max-w-[400px] flex flex-col items-center my-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close btn */}
         <button
           onClick={onClose}
-          className="absolute -top-2 -right-2 z-50 w-8 h-8 rounded-full bg-background border border-border shadow-lg flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
+          className="absolute -top-2 -right-2 z-50 w-9 h-9 rounded-full bg-background border border-border shadow-lg flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
+        {/* Feature badges bar */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3">
+          {featurePills.map((fp) => (
+            <span
+              key={fp}
+              className="px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-white text-[11px] font-bold border border-white/20"
+            >
+              {fp}
+            </span>
+          ))}
+        </div>
+
         {/* Phone mockup */}
         <div className="w-full rounded-[2.5rem] border-[6px] border-gray-800 bg-gray-800 shadow-2xl overflow-hidden relative">
-          {/* Notch */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-800 rounded-b-2xl z-20" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-gray-800 rounded-b-2xl z-20" />
 
-          {/* Phone screen */}
           <div
-            className="relative rounded-[2rem] overflow-hidden overflow-y-auto max-h-[70vh]"
+            className="relative rounded-[2rem] overflow-hidden overflow-y-auto max-h-[64vh]"
             style={{ background: p.cardBg, ...fontStyle }}
           >
-            {/* Cover */}
-            <div
-              className="h-40 relative overflow-hidden"
-              style={{ background: p.coverBg }}
-            >
-              {p.coverOverlay && (
-                <div
-                  className="absolute inset-0"
-                  style={{ background: p.coverOverlay }}
-                />
-              )}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.15),transparent_60%)]" />
-            </div>
-
-            {/* Avatar */}
-            <div className="flex justify-center -mt-12 relative z-10">
+            {/* Header varies by layoutStyle */}
+            {layoutStyle === "hero_cover" ? (
               <div
-                className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold border-4 shadow-xl"
-                style={{
-                  background: p.avatarBg,
-                  borderColor:
-                    typeof p.cardBg === "string" &&
-                    p.cardBg.startsWith("linear")
-                      ? "rgba(255,255,255,0.5)"
-                      : p.cardBg,
-                  color: "#fff",
-                }}
+                className="h-48 relative overflow-hidden flex flex-col justify-end p-5 text-left"
+                style={{ background: p.coverBg }}
               >
-                {p.avatarInitial}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white shadow-xl"
+                    style={{ background: p.avatarBg, color: "#fff" }}
+                  >
+                    {p.avatarInitial}
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-white">{p.displayName}</p>
+                    <p className="text-xs text-white/80">{p.subtitle}</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div
+                  className="h-32 relative overflow-hidden"
+                  style={{ background: p.coverBg }}
+                />
+                <div className="flex justify-center -mt-11 relative z-10">
+                  <div
+                    className={`w-22 h-22 ${layoutStyle === "minimal_card" ? "rounded-2xl" : "rounded-full"} flex items-center justify-center text-2xl font-bold border-4 shadow-xl`}
+                    style={{
+                      width: 84,
+                      height: 84,
+                      background: p.avatarBg,
+                      borderColor: "#fff",
+                      color: "#fff",
+                    }}
+                  >
+                    {p.avatarInitial}
+                  </div>
+                </div>
+              </>
+            )}
 
-            {/* Content */}
-            <div className="px-6 pt-3 pb-8 text-center">
-              <p className="font-bold text-xl" style={{ color: p.textColor }}>
-                {p.displayName}
-              </p>
-              <p className="text-sm mt-1" style={{ color: p.subtitleColor }}>
-                {p.subtitle}
-              </p>
-
-              {p.badge && (
-                <span
-                  className="inline-block mt-2 text-xs font-semibold px-3 py-1 rounded-full"
-                  style={{
-                    background: `${p.accentColor}15`,
-                    color: p.accentColor,
-                    border: `1px solid ${p.accentColor}30`,
-                  }}
-                >
-                  {p.badge}
-                </span>
+            <div className="px-5 pt-3 pb-6 text-center space-y-4">
+              {layoutStyle !== "hero_cover" && (
+                <div>
+                  <p className="font-bold text-xl" style={{ color: p.textColor }}>
+                    {p.displayName}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: p.subtitleColor }}>
+                    {p.subtitle}
+                  </p>
+                  {p.badge && (
+                    <span
+                      className="inline-block mt-2 text-[11px] font-bold px-3 py-0.5 rounded-full"
+                      style={{
+                        background: `${p.accentColor}20`,
+                        color: p.accentColor,
+                        border: `1px solid ${p.accentColor}35`,
+                      }}
+                    >
+                      {p.badge}
+                    </span>
+                  )}
+                </div>
               )}
 
               {p.bio && (
-                <p
-                  className="text-xs mt-3 leading-relaxed"
-                  style={{ color: p.subtitleColor }}
-                >
+                <p className="text-xs leading-relaxed" style={{ color: p.subtitleColor }}>
                   {p.bio}
                 </p>
               )}
 
-              {p.socials && p.socials.length > 0 && (
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  {p.socials.map((s) => (
-                    <SocialIcon key={s} platform={s} size={22} />
+              {/* Rich Category Widget in Modal */}
+              {tpl.category === "Boutique" && (
+                <div className="grid grid-cols-2 gap-2 text-left">
+                  {[
+                    { name: p.buttons[0]?.label || "Pack Formation", price: "15 000 XAF" },
+                    { name: p.buttons[1]?.label || "Consultation VIP", price: "10 000 XAF" },
+                  ].map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl p-2.5 border"
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        borderColor: `${p.accentColor}35`,
+                      }}
+                    >
+                      <div
+                        className="h-14 rounded-lg mb-2 flex items-center justify-center text-xl"
+                        style={{ background: `${p.accentColor}20` }}
+                      >
+                        {idx === 0 ? "🛍️" : "📦"}
+                      </div>
+                      <p className="text-xs font-bold truncate" style={{ color: p.textColor }}>
+                        {item.name}
+                      </p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-[11px] font-extrabold" style={{ color: p.accentColor }}>
+                          {item.price}
+                        </span>
+                        <span
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold text-white"
+                          style={{ background: p.accentColor }}
+                        >
+                          Acheter
+                        </span>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
 
-              <div className="mt-5 space-y-2.5">
+              {(tpl.category === "Festival" || tpl.category === "Animation") && (
+                <div
+                  className="rounded-xl p-3 border"
+                  style={{
+                    background: `${p.accentColor}15`,
+                    borderColor: `${p.accentColor}35`,
+                  }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: p.accentColor }}>
+                    ⏳ Compte à rebours officiel
+                  </p>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { v: "04", l: "Jours" },
+                      { v: "18", l: "Heures" },
+                      { v: "42", l: "Min" },
+                      { v: "19", l: "Sec" },
+                    ].map((u) => (
+                      <div
+                        key={u.l}
+                        className="rounded-lg py-1.5"
+                        style={{ background: "rgba(0,0,0,0.2)", color: p.textColor }}
+                      >
+                        <p className="font-extrabold text-sm">{u.v}</p>
+                        <p className="text-[9px] opacity-75">{u.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Buttons (Bento or Stack) */}
+              <div className={layoutStyle === "bento" ? "grid grid-cols-2 gap-2" : "space-y-2"}>
                 {p.buttons.map((btn, i) => (
                   <div
                     key={i}
-                    className="w-full py-3 px-4 text-sm font-semibold text-center truncate"
+                    className={`${layoutStyle === "bento" && i === 0 ? "col-span-2" : ""} py-2.5 px-3 text-xs font-bold text-center truncate`}
                     style={{
                       background: btn.bg,
                       color: btn.textColor,
@@ -1428,112 +1997,57 @@ function TemplatePreviewModal({
                 ))}
               </div>
 
-              {/* Extra block in full preview */}
-              {tpl.preview.extraBlock && (
-                <div className="mt-4">
-                  {tpl.preview.extraBlock.type === "spotify" && (
-                    <div
-                      className="rounded-xl p-3 flex items-center gap-3"
-                      style={{ background: "#1DB954" }}
-                    >
-                      <SocialIcon platform="spotify" size={24} />
-                      <div className="text-left min-w-0">
-                        <p className="text-sm font-bold text-white truncate">
-                          {tpl.preview.extraBlock.data?.track}
-                        </p>
-                        <p className="text-xs text-white/70 truncate">
-                          {tpl.preview.extraBlock.data?.artist}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {tpl.preview.extraBlock.type === "video" && (
-                    <div
-                      className="rounded-xl overflow-hidden"
-                      style={{ background: "rgba(0,0,0,0.1)" }}
-                    >
-                      <div className="h-28 flex items-center justify-center gap-2 relative">
-                        <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                          <div className="w-0 h-0 border-l-[10px] border-l-red-500 border-y-[6px] border-y-transparent ml-1" />
-                        </div>
-                        <p
-                          className="text-sm font-medium"
-                          style={{ color: p.textColor }}
-                        >
-                          {tpl.preview.extraBlock.data?.title}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {tpl.preview.extraBlock.type === "form" && (
-                    <div
-                      className="rounded-xl p-4 space-y-2"
-                      style={{ border: `1.5px solid ${p.accentColor}30` }}
-                    >
-                      <p
-                        className="text-sm font-bold"
-                        style={{ color: p.accentColor }}
-                      >
-                        {tpl.preview.extraBlock.data?.title}
-                      </p>
-                      <input
-                        disabled
-                        placeholder="Full Name *"
-                        className="w-full h-9 rounded-lg px-3 text-xs bg-gray-50 border border-gray-200"
-                      />
-                      <input
-                        disabled
-                        placeholder="Email *"
-                        className="w-full h-9 rounded-lg px-3 text-xs bg-gray-50 border border-gray-200"
-                      />
-                      <div
-                        className="h-9 rounded-lg text-xs font-bold text-white flex items-center justify-center"
-                        style={{ background: p.accentColor }}
-                      >
-                        Submit
-                      </div>
-                    </div>
-                  )}
-                  {tpl.preview.extraBlock.type === "image-grid" && (
-                    <div className="grid grid-cols-3 gap-2 rounded-xl overflow-hidden">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div
-                          key={i}
-                          className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-lg"
-                        />
-                      ))}
-                    </div>
-                  )}
+              {/* WhatsApp + Tip Jar preview */}
+              <div
+                className="rounded-xl p-3 flex items-center justify-between text-left"
+                style={{
+                  background: "rgba(16,185,129,0.14)",
+                  border: "1px solid rgba(16,185,129,0.35)",
+                }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center text-sm">
+                    💬
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: p.textColor }}>
+                      Discussion WhatsApp Directe
+                    </p>
+                    <p className="text-[10px]" style={{ color: p.subtitleColor }}>
+                      Réponse rapide en 1 clic
+                    </p>
+                  </div>
                 </div>
-              )}
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-[10px] font-bold">
+                  Écrire
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Action buttons below phone */}
-        <div className="flex gap-3 mt-5">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            className="px-5 py-2.5 bg-background text-foreground rounded-xl font-semibold text-sm shadow-lg border border-border"
-          >
-            Fermer
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+        <div className="flex flex-col sm:flex-row gap-2.5 mt-4 w-full">
+          <button
             onClick={onUse}
             disabled={applying}
-            className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm shadow-lg flex items-center gap-2"
+            className="flex-1 py-2.5 px-4 bg-card text-foreground rounded-xl font-bold text-xs shadow-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-1.5"
+          >
+            {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            Appliquer le style seul
+          </button>
+          <button
+            onClick={onUseWithBlocks}
+            disabled={applying}
+            className="flex-1 py-2.5 px-4 gradient-cta text-primary-foreground rounded-xl font-bold text-xs shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
           >
             {applying ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Check className="w-4 h-4" />
+              <Sparkles className="w-3.5 h-3.5" />
             )}
-            {applying ? "Application..." : "Utiliser ce modèle"}
-          </motion.button>
+            Style + Blocs du modèle
+          </button>
         </div>
       </motion.div>
     </motion.div>
@@ -1542,6 +2056,7 @@ function TemplatePreviewModal({
 
 // === Main Component ===
 export default function DashboardTemplates({ profile, onUpdate }: Props) {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [search, setSearch] = useState("");
@@ -1557,32 +2072,58 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
     return matchCat && matchSearch;
   });
 
-  const handleUseTemplate = async (tpl: TemplateDef) => {
+  const handleUseTemplate = async (tpl: TemplateDef, includeStarterBlocks = false) => {
     if (!profile) return;
     if (tpl.isPro && profile.plan === "free") {
       toast({
         title: "Modèle Premium 👑",
-        description: "Passe au plan Premium pour utiliser ce modèle.",
+        description: "Passe au plan Starter, Premium ou Business pour débloquer ce modèle.",
         variant: "destructive",
       });
+      navigate("/dashboard/abonnement");
       return;
     }
     setApplyingId(tpl.id);
     try {
-      const updates: Partial<Profile> = {
-        theme: tpl.theme as Profile["theme"],
+      const layoutStyle = getTemplateLayoutStyle(tpl);
+      const updates: Record<string, unknown> = {
+        theme: tpl.theme,
         button_style: tpl.button_style,
         font_style: tpl.font_style,
         background_color: tpl.background_color,
+        layout_style: layoutStyle,
       };
       if (onUpdate) {
-        await onUpdate(updates);
-      } else {
-        await supabase.from("profiles").update(updates).eq("id", profile.id);
+        await onUpdate(updates as Partial<Profile>);
       }
+      await supabase.from("profiles").update(updates).eq("id", profile.id);
+
+      if (includeStarterBlocks) {
+        const starterBlocks = getTemplateStarterBlocks(tpl);
+        const { data: existing } = await supabase
+          .from("page_blocks")
+          .select("id")
+          .eq("profile_id", profile.id);
+        let pos = Array.isArray(existing) ? existing.length : 0;
+        for (const blk of starterBlocks) {
+          await supabase.from("page_blocks").insert({
+            profile_id: profile.id,
+            type: blk.type,
+            title: blk.title,
+            content: blk.content,
+            position: pos++,
+            is_active: true,
+          });
+        }
+      }
+
       toast({
-        title: `✅ Modèle "${tpl.name}" appliqué !`,
-        description: "Va dans Apparence pour personnaliser davantage.",
+        title: includeStarterBlocks
+          ? `✅ Modèle "${tpl.name}" + blocs installés !`
+          : `✅ Modèle "${tpl.name}" appliqué !`,
+        description: includeStarterBlocks
+          ? "La disposition et les blocs interactifs ont été ajoutés à ta page."
+          : "Le thème, la disposition et les couleurs ont été mis à jour.",
       });
       setPreviewTpl(null);
     } catch {
@@ -1612,10 +2153,10 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
           </div>
           <div>
             <h2 className="font-dm font-bold text-lg text-foreground">
-              Modèles de page
+              Galerie de Modèles Architecturaux
             </h2>
             <p className="text-sm text-muted-foreground">
-              Choisis un template et applique-le en un clic
+              Chaque modèle possède sa propre disposition (Bento, Carte vCard, Boutique, Poster Festival) et ses blocs dédiés
             </p>
           </div>
         </div>
@@ -1638,7 +2179,8 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
                 />
                 <p className="text-xs text-foreground font-medium">
                   Modèle actif :{" "}
-                  <span className="text-primary font-bold">{active.name}</span>
+                  <span className="text-primary font-bold">{active.name}</span>{" "}
+                  <span className="text-muted-foreground">({active.category})</span>
                 </p>
               </div>
             );
@@ -1649,7 +2191,7 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un modèle..."
+            placeholder="Rechercher un modèle (Boutique, Carte de visite, Festival, Néon...)"
             className="pl-9 rounded-xl bg-background/60 backdrop-blur-sm border-border/50"
           />
         </div>
@@ -1696,7 +2238,7 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
         ) : (
           <motion.div
             key={activeCategory}
-            className="grid grid-cols-2 lg:grid-cols-3 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {filtered.map((tpl, i) => (
               <TemplateCard
@@ -1704,7 +2246,7 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
                 tpl={tpl}
                 index={i}
                 applying={applyingId === tpl.id}
-                onUse={() => handleUseTemplate(tpl)}
+                onUse={() => handleUseTemplate(tpl, true)}
                 onPreview={() => setPreviewTpl(tpl)}
               />
             ))}
@@ -1719,24 +2261,20 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
         transition={{ delay: 0.4, duration: 0.5 }}
         className="relative rounded-2xl border border-amber-200/50 p-6 text-center overflow-hidden"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-50/80 to-orange-50/80 backdrop-blur-xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,hsl(40_100%_50%/0.1),transparent_60%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-50/80 to-orange-50/80 dark:from-amber-950/30 dark:to-orange-950/20 backdrop-blur-xl" />
         <div className="relative z-10">
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-          >
-            <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-          </motion.div>
+          <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2" />
           <h3 className="font-dm font-bold text-base text-foreground mb-1">
-            Accède à tous les modèles Pro
+            Accède à tous les modèles Pro & E-Commerce
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Débloque les modèles animés, boutiques et festivals avec le plan
-            Premium
+            Débloque les modèles animés, boutiques Mobile Money et festivals avec un abonnement Pro
           </p>
-          <button className="px-6 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all hover:scale-105">
-            Passer à Premium 👑
+          <button
+            onClick={() => navigate("/dashboard/abonnement")}
+            className="px-6 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all hover:scale-105"
+          >
+            Voir les offres d'abonnement 👑
           </button>
         </div>
       </motion.div>
@@ -1747,7 +2285,8 @@ export default function DashboardTemplates({ profile, onUpdate }: Props) {
           <TemplatePreviewModal
             tpl={previewTpl}
             onClose={() => setPreviewTpl(null)}
-            onUse={() => handleUseTemplate(previewTpl)}
+            onUse={() => handleUseTemplate(previewTpl, false)}
+            onUseWithBlocks={() => handleUseTemplate(previewTpl, true)}
             applying={applyingId === previewTpl.id}
           />
         )}

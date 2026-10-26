@@ -44,6 +44,13 @@ import {
   AlignLeft,
   AlignCenter,
   Share2,
+  Layers,
+  Clock,
+  Star,
+  HelpCircle,
+  MessageCircle,
+  Heart,
+  QrCode,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import SocialIcon, {
@@ -58,6 +65,7 @@ import { firestoreDB as supabase } from "@/lib/db";
 import type { Tables } from "@/lib/types";
 import { VerifiedBadge, BADGE_STYLES } from "@/components/VerifiedBadge";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
+import { ProfileShareQRModal } from "@/components/ProfileShareQRModal";
 import { motion } from "framer-motion";
 
 const PAGE_THEMES = [
@@ -241,6 +249,51 @@ const BLOCK_TYPES: {
     preview: "bg-emerald-50 border-emerald-200",
     premium: true,
     businessOnly: true,
+  },
+  {
+    type: "whatsapp_cta",
+    label: "Bouton WhatsApp",
+    Icon: MessageCircle,
+    iconColor: "text-emerald-500",
+    iconBg: "bg-emerald-100 dark:bg-emerald-500/20",
+    desc: "Discussion directe WhatsApp avec message pré-rempli",
+    preview: "bg-emerald-50 border-emerald-200",
+  },
+  {
+    type: "tip_jar",
+    label: "Pourboire Mobile Money",
+    Icon: Heart,
+    iconColor: "text-rose-500",
+    iconBg: "bg-rose-100 dark:bg-rose-500/20",
+    desc: "Reçois des dons et pourboires via Orange Money & MTN MoMo",
+    preview: "bg-rose-50 border-rose-200",
+  },
+  {
+    type: "countdown",
+    label: "Compte à rebours",
+    Icon: Clock,
+    iconColor: "text-indigo-500",
+    iconBg: "bg-indigo-100 dark:bg-indigo-500/20",
+    desc: "Chronomètre live pour lancement, promo ou événement",
+    preview: "bg-indigo-50 border-indigo-200",
+  },
+  {
+    type: "testimonials",
+    label: "Avis & Témoignages",
+    Icon: Star,
+    iconColor: "text-amber-500",
+    iconBg: "bg-amber-100 dark:bg-amber-500/20",
+    desc: "Affiche les avis étoilés de tes clients et abonnés",
+    preview: "bg-amber-50 border-amber-200",
+  },
+  {
+    type: "faq",
+    label: "FAQ Accordéon",
+    Icon: HelpCircle,
+    iconColor: "text-cyan-500",
+    iconBg: "bg-cyan-100 dark:bg-cyan-500/20",
+    desc: "Questions / réponses dépliables pour rassurer tes visiteurs",
+    preview: "bg-cyan-50 border-cyan-200",
   },
 ];
 
@@ -894,9 +947,9 @@ function BlockEditor({
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Le client paiera{" "}
                     {Math.round(
-                      (form.content.price as number) * 1.07,
+                      (form.content.price as number) * 1.03,
                     ).toLocaleString("fr-FR")}{" "}
-                    XAF (frais 7% inclus)
+                    XAF (frais 3% inclus)
                   </p>
                 )}
               </div>
@@ -946,6 +999,325 @@ function BlockEditor({
                 💳 Les paiements seront crédités automatiquement dans ton
                 portefeuille AvyLink.
               </p>
+            </div>
+          )}
+
+          {block.type === "whatsapp_cta" && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Numéro WhatsApp (avec indicatif, ex: 237690000000)
+                </label>
+                <Input
+                  value={(form.content?.phone as string) || ""}
+                  onChange={(e) => updateContent("phone", e.target.value)}
+                  placeholder="237690000000"
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Texte du bouton
+                </label>
+                <Input
+                  value={(form.content?.button_text as string) || ""}
+                  onChange={(e) => updateContent("button_text", e.target.value)}
+                  placeholder="Commander sur WhatsApp"
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Sous-titre (optionnel)
+                </label>
+                <Input
+                  value={(form.content?.subtitle as string) || ""}
+                  onChange={(e) => updateContent("subtitle", e.target.value)}
+                  placeholder="Réponse en moins de 5 minutes"
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Message pré-rempli automatique
+                </label>
+                <textarea
+                  value={(form.content?.message as string) || ""}
+                  onChange={(e) => updateContent("message", e.target.value)}
+                  rows={3}
+                  placeholder="Bonjour ! Je viens de votre profil AvyLink et je souhaite..."
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {block.type === "tip_jar" && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Message d'encouragement
+                </label>
+                <textarea
+                  value={(form.content?.description as string) || ""}
+                  onChange={(e) => updateContent("description", e.target.value)}
+                  rows={2}
+                  placeholder="Soutenez mes créations avec un café via Orange Money ou MTN MoMo ❤️"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Montants proposés (FCFA, séparés par des virgules)
+                </label>
+                <Input
+                  value={
+                    ((form.content?.amounts as number[]) || [500, 1000, 2500, 5000]).join(
+                      ", ",
+                    )
+                  }
+                  onChange={(e) => {
+                    const parsed = e.target.value
+                      .split(",")
+                      .map((v) => parseInt(v.trim(), 10))
+                      .filter((n) => !isNaN(n) && n > 0);
+                    updateContent(
+                      "amounts",
+                      parsed.length > 0 ? parsed : [500, 1000, 2500, 5000],
+                    );
+                  }}
+                  placeholder="500, 1000, 2500, 5000"
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+
+          {block.type === "countdown" && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Date et heure cible
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={(form.content?.target_date as string) || ""}
+                  onChange={(e) => updateContent("target_date", e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">
+                  Description de l'événement
+                </label>
+                <Input
+                  value={(form.content?.subtitle as string) || ""}
+                  onChange={(e) => updateContent("subtitle", e.target.value)}
+                  placeholder="Ex: Lancement de ma nouvelle formation !"
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-foreground mb-1 block">
+                    Texte du bouton (optionnel)
+                  </label>
+                  <Input
+                    value={(form.content?.cta_text as string) || ""}
+                    onChange={(e) => updateContent("cta_text", e.target.value)}
+                    placeholder="Réserver ma place"
+                    className="rounded-xl h-9 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground mb-1 block">
+                    Lien du bouton
+                  </label>
+                  <Input
+                    value={(form.content?.cta_url as string) || ""}
+                    onChange={(e) => updateContent("cta_url", e.target.value)}
+                    placeholder="https://..."
+                    className="rounded-xl h-9 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {block.type === "testimonials" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">
+                  Avis clients
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const items =
+                      (form.content?.items as Array<{
+                        author: string;
+                        role: string;
+                        comment: string;
+                        rating: number;
+                      }>) || [];
+                    updateContent("items", [
+                      ...items,
+                      {
+                        author: "",
+                        role: "Client vérifié",
+                        comment: "",
+                        rating: 5,
+                      },
+                    ]);
+                  }}
+                  className="flex items-center gap-1 text-xs font-bold text-primary"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Ajouter un avis
+                </button>
+              </div>
+              {(
+                (form.content?.items as Array<{
+                  author: string;
+                  role: string;
+                  comment: string;
+                  rating: number;
+                }>) || []
+              ).map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-2 relative"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const items = [
+                        ...((form.content?.items as Array<any>) || []),
+                      ];
+                      items.splice(idx, 1);
+                      updateContent("items", items);
+                    }}
+                    className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="grid grid-cols-2 gap-2 pr-6">
+                    <Input
+                      value={item.author}
+                      onChange={(e) => {
+                        const items = [
+                          ...((form.content?.items as Array<any>) || []),
+                        ];
+                        items[idx] = { ...items[idx], author: e.target.value };
+                        updateContent("items", items);
+                      }}
+                      placeholder="Nom du client"
+                      className="h-8 text-xs rounded-lg"
+                    />
+                    <Input
+                      value={item.role || ""}
+                      onChange={(e) => {
+                        const items = [
+                          ...((form.content?.items as Array<any>) || []),
+                        ];
+                        items[idx] = { ...items[idx], role: e.target.value };
+                        updateContent("items", items);
+                      }}
+                      placeholder="Rôle / Ville"
+                      className="h-8 text-xs rounded-lg"
+                    />
+                  </div>
+                  <textarea
+                    value={item.comment}
+                    onChange={(e) => {
+                      const items = [
+                        ...((form.content?.items as Array<any>) || []),
+                      ];
+                      items[idx] = { ...items[idx], comment: e.target.value };
+                      updateContent("items", items);
+                    }}
+                    rows={2}
+                    placeholder="Commentaire du client..."
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {block.type === "faq" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">
+                  Questions / Réponses
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const items =
+                      (form.content?.items as Array<{
+                        question: string;
+                        answer: string;
+                      }>) || [];
+                    updateContent("items", [
+                      ...items,
+                      { question: "", answer: "" },
+                    ]);
+                  }}
+                  className="flex items-center gap-1 text-xs font-bold text-primary"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Ajouter une question
+                </button>
+              </div>
+              {(
+                (form.content?.items as Array<{
+                  question: string;
+                  answer: string;
+                }>) || []
+              ).map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-2 relative"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const items = [
+                        ...((form.content?.items as Array<any>) || []),
+                      ];
+                      items.splice(idx, 1);
+                      updateContent("items", items);
+                    }}
+                    className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <Input
+                    value={item.question}
+                    onChange={(e) => {
+                      const items = [
+                        ...((form.content?.items as Array<any>) || []),
+                      ];
+                      items[idx] = { ...items[idx], question: e.target.value };
+                      updateContent("items", items);
+                    }}
+                    placeholder="Question fréquente..."
+                    className="h-8 text-xs rounded-lg pr-7"
+                  />
+                  <textarea
+                    value={item.answer}
+                    onChange={(e) => {
+                      const items = [
+                        ...((form.content?.items as Array<any>) || []),
+                      ];
+                      items[idx] = { ...items[idx], answer: e.target.value };
+                      updateContent("items", items);
+                    }}
+                    rows={2}
+                    placeholder="Réponse..."
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs resize-none"
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1332,7 +1704,7 @@ function LivePreviewBlock({ block }: { block: PageBlock }) {
   }
 
   if (block.type === "shop_item") {
-    const clientPrice = c.price ? Math.round((c.price as number) * 1.07) : 0;
+    const clientPrice = c.price ? Math.round((c.price as number) * 1.03) : 0;
     const TypeIcon =
       c.item_type === "service"
         ? Briefcase
@@ -1376,6 +1748,77 @@ function LivePreviewBlock({ block }: { block: PageBlock }) {
     );
   }
 
+  if (block.type === "whatsapp_cta") {
+    return (
+      <div className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+            <MessageCircle className="w-3.5 h-3.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold text-foreground truncate">
+              {(c.button_text as string) || block.title || "WhatsApp"}
+            </p>
+            <p className="text-[8px] text-muted-foreground truncate">
+              {(c.subtitle as string) || "Discussion directe"}
+            </p>
+          </div>
+        </div>
+        <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white text-[8px] font-bold">
+          Écrire
+        </span>
+      </div>
+    );
+  }
+
+  if (block.type === "tip_jar") {
+    return (
+      <div className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+          <p className="text-[10px] font-bold text-foreground truncate">
+            {block.title || "Pourboire Mobile Money"}
+          </p>
+        </div>
+        <div className="grid grid-cols-4 gap-1">
+          {((c.amounts as number[]) || [500, 1000, 2500, 5000])
+            .slice(0, 4)
+            .map((amt) => (
+              <div
+                key={amt}
+                className="py-1 rounded bg-background/80 text-center text-[8px] font-bold text-foreground"
+              >
+                {amt} F
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "countdown") {
+    return (
+      <div className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-indigo-500" />
+          <p className="text-[10px] font-bold text-foreground truncate">
+            {block.title || "Compte à rebours"}
+          </p>
+        </div>
+        <div className="grid grid-cols-4 gap-1 text-center">
+          {["02J", "14H", "35M", "12S"].map((u) => (
+            <div
+              key={u}
+              className="py-1 rounded bg-background/80 text-[8px] font-bold text-foreground"
+            >
+              {u}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // Fallback
   return (
     <div className="flex items-center gap-2 p-2 rounded-xl border border-border/40 bg-secondary/20">
@@ -1392,6 +1835,7 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1968,24 +2412,50 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
 
       {/* Profile URL */}
       {profileUrl && (
-        <div className="glass-blue rounded-2xl p-4 flex items-center gap-3">
+        <div className="glass-blue rounded-2xl p-4 flex flex-wrap items-center gap-2 sm:gap-3">
           <Globe className="w-4 h-4 text-primary flex-shrink-0" />
-          <span className="text-sm font-medium text-foreground flex-1 truncate">
-            {profileUrl}
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-primary gap-1 flex-shrink-0"
-            onClick={copyUrl}
+          <a
+            href={profileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-foreground hover:text-primary transition-colors flex-1 truncate min-w-[140px]"
+            title="Ouvrir mon portfolio public"
           >
-            {copied ? (
-              <Check className="w-4 h-4" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-            {copied ? "Copié !" : "Copier"}
-          </Button>
+            {profileUrl}
+          </a>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-primary gap-1 flex-shrink-0 h-8 px-2.5"
+              onClick={copyUrl}
+            >
+              {copied ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              <span className="hidden xs:inline">{copied ? "Copié !" : "Copier"}</span>
+            </Button>
+            <a
+              href={profileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl gradient-cta text-primary-foreground text-xs font-bold shadow-xs hover:opacity-95 transition-opacity"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Ouvrir</span>
+            </a>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-xl gap-1.5 h-8 text-xs font-bold border-primary/30 text-primary flex-shrink-0"
+              onClick={() => setShowQRModal(true)}
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">QR & Carte</span>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -2667,6 +3137,18 @@ export default function DashboardPage({ profile, onUpdate }: Props) {
             <span>Éditer ma page</span>
           </Button>
         </div>
+      )}
+
+      {profile && (
+        <ProfileShareQRModal
+          open={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          username={profile.username}
+          displayName={profile.display_name || profile.username}
+          bio={profile.bio}
+          avatarUrl={profile.avatar_url}
+          website={profile.website}
+        />
       )}
     </div>
   );

@@ -96,6 +96,43 @@ export default function DashboardSettings({ profile, onUpdate }: Props) {
     toast({ title: "✅ Préférences sauvegardées" });
   };
 
+  const [customDomain, setCustomDomain] = useState(
+    ((profile as any)?.custom_domain as string) || "",
+  );
+  const [savingDomain, setSavingDomain] = useState(false);
+
+  const handleSaveDomain = async () => {
+    if (!profile) return;
+    if (profile.plan === "free" || profile.plan === "starter") {
+      toast({
+        title: "Plan Premium Requis 👑",
+        description: "Le domaine personnalisé est inclus dès le plan Premium.",
+        variant: "destructive",
+      });
+      navigate("/dashboard/abonnement");
+      return;
+    }
+    setSavingDomain(true);
+    const cleaned = customDomain
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/.*$/, "");
+    setCustomDomain(cleaned);
+    await onUpdate({ custom_domain: cleaned } as any);
+    await supabase
+      .from("profiles")
+      .update({ custom_domain: cleaned } as any)
+      .eq("id", profile.id);
+    setSavingDomain(false);
+    toast({
+      title: "✅ Domaine personnalisé enregistré !",
+      description: cleaned
+        ? `${cleaned} est lié à votre profil.`
+        : "Domaine supprimé.",
+    });
+  };
+
   if (subPage === "advanced")
     return (
       <DashboardAdvancedSettings
@@ -110,6 +147,80 @@ export default function DashboardSettings({ profile, onUpdate }: Props) {
         profile={profile}
         onBack={() => setSubPage(null)}
       />
+    );
+  if (subPage === "domain")
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
+        <button
+          onClick={() => setSubPage(null)}
+          className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+        >
+          ← Retour aux réglages
+        </button>
+        <div className="bg-card rounded-2xl border border-border/50 p-5 shadow-card space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-dm font-bold text-lg text-foreground">
+                Gestion de domaine personnalisé
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Connecte ton propre nom de domaine (ex: liens.monentreprise.com)
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground block">
+              Nom de domaine
+            </label>
+            <Input
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value)}
+              placeholder="liens.monsite.com"
+              className="rounded-xl"
+            />
+          </div>
+
+          <div className="rounded-xl bg-secondary/50 border border-border/50 p-4 space-y-2 text-xs">
+            <p className="font-bold text-foreground">
+              Configuration DNS (Enregistrement CNAME) :
+            </p>
+            <div className="grid grid-cols-3 gap-2 font-mono bg-background p-2.5 rounded-lg border border-border/40">
+              <div>
+                <span className="text-muted-foreground block text-[10px]">Type</span>
+                <strong>CNAME</strong>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">Hôte</span>
+                <strong>liens (ou @)</strong>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px]">Cible</span>
+                <strong>cname.avylink.app</strong>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Une fois l'enregistrement DNS ajouté chez ton hébergeur (OVH, Namecheap, Cloudflare), sauvegarde ton domaine ci-dessous. Le certificat SSL HTTPS est généré automatiquement.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleSaveDomain}
+            disabled={savingDomain}
+            className="w-full gradient-cta text-primary-foreground rounded-xl font-bold"
+          >
+            {savingDomain ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            Enregistrer le domaine
+          </Button>
+        </div>
+      </div>
     );
 
   const generalItems = [
@@ -206,17 +317,24 @@ export default function DashboardSettings({ profile, onUpdate }: Props) {
               {user?.email}
             </p>
           </div>
-          <button className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            onClick={() => navigate("/dashboard/page")}
+            className="p-2 rounded-xl hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
             <Settings2 className="w-4 h-4" />
           </button>
         </div>
         <div className="flex gap-3 relative z-10">
-          <button className="flex-1 py-2 px-4 rounded-xl border border-border/50 text-sm font-medium text-foreground hover:bg-secondary transition-colors backdrop-blur-sm">
+          <button
+            onClick={() => navigate("/dashboard/page")}
+            className="flex-1 py-2 px-4 rounded-xl border border-border/50 text-sm font-medium text-foreground hover:bg-secondary transition-colors backdrop-blur-sm"
+          >
             Gérer son compte
           </button>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/dashboard/abonnement")}
             className="flex-1 py-2 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 text-sm font-bold transition-colors flex items-center justify-center gap-1 shadow-lg"
           >
             Améliorer 👑
@@ -260,17 +378,20 @@ export default function DashboardSettings({ profile, onUpdate }: Props) {
             </label>
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-muted/20 backdrop-blur-sm">
               <span
-                className={`px-2.5 py-1 rounded-full text-xs font-bold ${profile?.plan === "free" ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${profile?.plan === "free" ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`}
               >
                 {profile?.plan || "free"}
               </span>
               <span className="text-sm text-muted-foreground">
                 {profile?.plan === "free"
-                  ? "Plan gratuit — limité à 5 liens"
-                  : "Accès complet"}
+                  ? "Plan gratuit — fonctionnalités de base"
+                  : "Accès abonné actif"}
               </span>
-              {profile?.plan === "free" && (
-                <button className="ml-auto text-xs font-semibold text-primary hover:underline">
+              {profile?.plan !== "business" && (
+                <button
+                  onClick={() => navigate("/dashboard/abonnement")}
+                  className="ml-auto text-xs font-semibold text-primary hover:underline"
+                >
                   Upgrader →
                 </button>
               )}

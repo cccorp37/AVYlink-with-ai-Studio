@@ -9,7 +9,6 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     enabled: boolean;
     message: string;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase
@@ -18,14 +17,12 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
       .eq("key", "maintenance_mode")
       .single()
       .then(({ data }) => {
-        if (data) {
+        if (data?.value) {
           setMaintenance(data.value as { enabled: boolean; message: string });
         }
-        setLoading(false);
-      });
+      })
+      .catch(() => {});
   }, []);
-
-  if (loading) return null;
 
   if (maintenance?.enabled && !isAdmin) {
     return (

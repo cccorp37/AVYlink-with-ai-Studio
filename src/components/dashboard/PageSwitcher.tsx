@@ -11,6 +11,7 @@ import {
   Sparkles,
   Palette,
   Layers,
+  ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestoreDB as supabase } from "@/lib/db";
@@ -479,7 +480,19 @@ export function PageSwitcher({
                       </button>
 
                       {/* Actions */}
-                      <div className="flex items-center pr-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                      <div className="flex items-center pr-1 opacity-80 group-hover/item:opacity-100 transition-opacity">
+                        {p.username && (
+                          <a
+                            href={`/u/${p.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Ouvrir cette page de portfolio"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
                         {isPaidPlan && canCreate && (
                           <button
                             onClick={() => setDuplicateTarget(p)}

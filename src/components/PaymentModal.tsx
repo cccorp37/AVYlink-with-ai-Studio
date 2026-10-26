@@ -99,6 +99,14 @@ export function PaymentModal({
       if (error) throw error;
 
       if (data?.success) {
+        if (type === "subscription" && metadata?.profile_id && metadata?.plan) {
+          try {
+            await supabase
+              .from("profiles")
+              .update({ plan: metadata.plan as string })
+              .eq("id", metadata.profile_id as string);
+          } catch (_) {}
+        }
         setStep("success");
         setTimeout(() => {
           onSuccess();

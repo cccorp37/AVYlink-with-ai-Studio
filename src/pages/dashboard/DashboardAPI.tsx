@@ -83,14 +83,17 @@ export default function DashboardAPI() {
   }, [user]);
 
   const loadData = async () => {
+    if (!user) return;
     const [keysRes, webhooksRes] = await Promise.all([
       supabase
         .from("api_keys")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
       supabase
         .from("webhooks")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
     ]);
     setApiKeys(keysRes.data || []);

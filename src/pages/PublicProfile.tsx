@@ -13,6 +13,16 @@ import {
   BookOpen,
   FileArchive,
   Download,
+  QrCode,
+  UserPlus,
+  Clock,
+  Star,
+  HelpCircle,
+  MessageCircle,
+  Heart,
+  ChevronDown,
+  ChevronUp,
+  Share2,
 } from "lucide-react";
 import { firestoreDB as supabase } from "@/lib/db";
 import SocialIcon, {
@@ -24,6 +34,7 @@ import SocialIcon, {
 import type { Tables } from "@/lib/types";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { StorePaymentModal } from "@/components/StorePaymentModal";
+import { ProfileShareQRModal, downloadVCard } from "@/components/ProfileShareQRModal";
 
 type ProfileLink = Tables<"profile_links">;
 type Profile = Tables<"profiles"> & {
@@ -467,7 +478,28 @@ function PageBlockRenderer({
       if (ytId) return <YouTubeBlock link={fakeLink} />;
       const tkId = extractTikTokId(url);
       if (tkId) return <TikTokBlock link={fakeLink} />;
-      return null;
+      return (
+        <a
+          href={url.startsWith("http") ? url : `https://${url}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: "#FF000018" }}
+          >
+            <SocialIcon platform="youtube" size={24} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {block.title || "Regarder la vidéo"}
+            </p>
+            <p className="text-xs text-muted-foreground">Vidéo</p>
+          </div>
+          <ExternalLink className="w-4 h-4 text-muted-foreground/50" />
+        </a>
+      );
     }
 
     case "music": {
@@ -484,7 +516,7 @@ function PageBlockRenderer({
       if (spData) return <SpotifyBlock link={fakeLink} />;
       return (
         <a
-          href={url}
+          href={url.startsWith("http") ? url : `https://${url}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
@@ -520,7 +552,28 @@ function PageBlockRenderer({
         } as ProfileLink;
         return <SpotifyBlock link={fakeLink} />;
       }
-      return null;
+      return (
+        <a
+          href={url.startsWith("http") ? url : `https://${url}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: "#EC489918" }}
+          >
+            <SocialIcon platform="spotify" size={24} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {block.title || "Écouter le podcast"}
+            </p>
+            <p className="text-xs text-muted-foreground">Podcast</p>
+          </div>
+          <ExternalLink className="w-4 h-4 text-muted-foreground/50" />
+        </a>
+      );
     }
 
     case "group": {
@@ -542,7 +595,7 @@ function PageBlockRenderer({
               link.url ? (
                 <a
                   key={i}
-                  href={link.url}
+                  href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-background hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
@@ -565,26 +618,53 @@ function PageBlockRenderer({
     }
 
     case "tiktok": {
-      const url = c.url as string;
+      const rawUrl = (c.url as string) || "";
+      const username = (c.username as string) || "";
+      const url = rawUrl || (username ? `https://tiktok.com/@${username.replace(/^@/, "")}` : "");
       if (!url) return null;
       const tkId = extractTikTokId(url);
-      if (!tkId) return null;
-      const fakeLink = {
-        id: block.id,
-        url,
-        title: block.title || "TikTok",
-        icon: "tiktok",
-        click_count: 0,
-      } as ProfileLink;
-      return <TikTokBlock link={fakeLink} />;
+      if (tkId) {
+        const fakeLink = {
+          id: block.id,
+          url,
+          title: block.title || "TikTok",
+          icon: "tiktok",
+          click_count: 0,
+        } as ProfileLink;
+        return <TikTokBlock link={fakeLink} />;
+      }
+      return (
+        <a
+          href={url.startsWith("http") ? url : `https://${url}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: "#00000018" }}
+          >
+            <SocialIcon platform="tiktok" size={24} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {block.title || (username ? `@${username.replace(/^@/, "")}` : "TikTok")}
+            </p>
+            <p className="text-xs text-muted-foreground">Profil TikTok</p>
+          </div>
+          <ExternalLink className="w-4 h-4 text-muted-foreground/50" />
+        </a>
+      );
     }
 
     case "instagram": {
-      const url = c.url as string;
+      const rawUrl = (c.url as string) || "";
+      const username = (c.username as string) || "";
+      const url = rawUrl || (username ? `https://instagram.com/${username.replace(/^@/, "")}` : "");
       if (!url) return null;
       return (
         <a
-          href={url}
+          href={url.startsWith("http") ? url : `https://${url}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
@@ -597,7 +677,7 @@ function PageBlockRenderer({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">
-              {block.title || "Instagram"}
+              {block.title || (username ? `@${username.replace(/^@/, "")}` : "Instagram")}
             </p>
             <p className="text-xs text-muted-foreground">Instagram</p>
           </div>
@@ -608,10 +688,18 @@ function PageBlockRenderer({
 
     case "youtube_sub": {
       const channelId = c.channelId as string;
+      const channelName = c.channelName as string;
       const channelUrl = c.url as string;
+      const href =
+        channelUrl ||
+        (channelId?.startsWith("http")
+          ? channelId
+          : channelId
+            ? `https://youtube.com/channel/${channelId}?sub_confirmation=1`
+            : "https://youtube.com");
       return (
         <a
-          href={channelUrl || `https://youtube.com/channel/${channelId}`}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
@@ -624,11 +712,13 @@ function PageBlockRenderer({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">
-              {block.title || "S'abonner"}
+              {block.title || channelName || "S'abonner sur YouTube"}
             </p>
             <p className="text-xs text-muted-foreground">YouTube</p>
           </div>
-          <ExternalLink className="w-4 h-4 text-muted-foreground/50" />
+          <span className="px-3 py-1 rounded-full bg-red-600 text-white text-xs font-bold">
+            S'abonner
+          </span>
         </a>
       );
     }
@@ -636,7 +726,6 @@ function PageBlockRenderer({
     case "social_embed": {
       const url = c.url as string;
       if (!url) return null;
-      // Detect platform and render embed
       if (
         url.includes("instagram.com/p/") ||
         url.includes("instagram.com/reel/")
@@ -716,7 +805,6 @@ function PageBlockRenderer({
           </div>
         );
       }
-      // Fallback - just show a link
       return (
         <a
           href={url}
@@ -742,7 +830,7 @@ function PageBlockRenderer({
       const c = block.content as Record<string, unknown>;
       const itemType = (c.item_type as string) || "article";
       const price = (c.price as number) || 0;
-      const clientPrice = Math.round(price * 1.07);
+      const clientPrice = Math.round(price * 1.03);
       const TypeIcon =
         itemType === "service"
           ? Briefcase
@@ -770,7 +858,7 @@ function PageBlockRenderer({
             ? "Télécharger"
             : "Acheter";
       return (
-        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+        <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-xs hover:shadow-md transition-shadow">
           {c.image_url ? (
             <img
               src={c.image_url as string}
@@ -813,13 +901,16 @@ function PageBlockRenderer({
                 onClick={() =>
                   onBuy?.({
                     id: c.store_item_id || block.id,
-                    name: (c.name as string) || "Article",
+                    name: (c.name as string) || block.title || "Article",
                     description: (c.description as string) || null,
                     price,
                     currency: "XAF",
                     image_url: (c.image_url as string) || null,
                     item_type: itemType,
-                    redirect_url: (c.redirect_url as string) || null,
+                    redirect_url:
+                      (c.redirect_url as string) ||
+                      (c.download_url as string) ||
+                      null,
                     seller_name: (c.seller_name as string) || null,
                     seller_phone: (c.seller_phone as string) || null,
                     seller_email: (c.seller_email as string) || null,
@@ -836,19 +927,313 @@ function PageBlockRenderer({
       );
     }
 
+    case "countdown":
+      return <CountdownBlock block={block} />;
+
+    case "testimonials":
+      return <TestimonialsBlock block={block} />;
+
+    case "faq":
+      return <FaqBlock block={block} />;
+
+    case "whatsapp_cta": {
+      const phone = ((c.phone as string) || "").replace(/[^0-9]/g, "");
+      const message = (c.message as string) || "Bonjour, je viens depuis votre page AvyLink !";
+      const buttonText = (c.button_text as string) || block.title || "Discuter sur WhatsApp";
+      const subtitle = (c.subtitle as string) || "Réponse rapide en direct";
+      const waHref = phone
+        ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+        : `https://wa.me/?text=${encodeURIComponent(message)}`;
+      return (
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-4 p-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-teal-500/10 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md flex-shrink-0 group-hover:scale-105 transition-transform">
+            <MessageCircle className="w-6 h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-sm font-bold text-foreground truncate">
+                {buttonText}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
+              {subtitle}
+            </p>
+          </div>
+          <span className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-bold flex-shrink-0">
+            Écrire
+          </span>
+        </a>
+      );
+    }
+
+    case "tip_jar":
+      return <TipJarBlock block={block} onBuy={onBuy} />;
+
     default:
       return null;
   }
+}
+
+// ─── Interactive Blocks: Countdown, Testimonials, FAQ, TipJar ─────────────────
+
+function CountdownBlock({ block }: { block: PageBlock }) {
+  const c = block.content as Record<string, unknown>;
+  const targetDateStr = (c.target_date as string) || "";
+  const subtitle = (c.subtitle as string) || "";
+  const ctaText = (c.cta_text as string) || "";
+  const ctaUrl = (c.cta_url as string) || "";
+
+  const calculateRemaining = () => {
+    const target = targetDateStr ? new Date(targetDateStr).getTime() : Date.now() + 86400000 * 3;
+    const diff = Math.max(0, target - Date.now());
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / 1000 / 60) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    return { days, hours, minutes, seconds, expired: diff <= 0 };
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateRemaining);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateRemaining());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDateStr]);
+
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-card p-4 space-y-3 shadow-xs">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <p className="font-dm font-bold text-sm text-foreground">
+            {block.title || "Compte à rebours"}
+          </p>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+          {timeLeft.expired ? "Terminé" : "En cours"}
+        </span>
+      </div>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      <div className="grid grid-cols-4 gap-2 text-center">
+        {[
+          { label: "Jours", val: timeLeft.days },
+          { label: "Heures", val: timeLeft.hours },
+          { label: "Min", val: timeLeft.minutes },
+          { label: "Sec", val: timeLeft.seconds },
+        ].map((unit) => (
+          <div
+            key={unit.label}
+            className="rounded-xl bg-secondary/70 border border-border/50 py-2.5 px-1"
+          >
+            <p className="font-dm font-extrabold text-lg text-foreground tabular-nums">
+              {String(unit.val).padStart(2, "0")}
+            </p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase">
+              {unit.label}
+            </p>
+          </div>
+        ))}
+      </div>
+      {ctaText && ctaUrl && (
+        <a
+          href={ctaUrl.startsWith("http") ? ctaUrl : `https://${ctaUrl}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full py-2.5 rounded-xl gradient-cta text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-95 transition-opacity"
+        >
+          {ctaText} <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function TestimonialsBlock({ block }: { block: PageBlock }) {
+  const c = block.content as Record<string, unknown>;
+  const items =
+    (c.items as Array<{
+      author: string;
+      role?: string;
+      comment: string;
+      rating?: number;
+    }>) || [];
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+        <p className="font-dm font-bold text-sm text-foreground">
+          {block.title || "Avis & Témoignages"}
+        </p>
+      </div>
+      <div className="space-y-2.5">
+        {items.map((item, idx) => (
+          <div
+            key={idx}
+            className="p-3 rounded-xl bg-secondary/40 border border-border/40 space-y-1.5"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-foreground">
+                  {item.author || "Client vérifié"}
+                </p>
+                {item.role && (
+                  <p className="text-[10px] text-muted-foreground">{item.role}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: item.rating || 5 }).map((_, s) => (
+                  <Star
+                    key={s}
+                    className="w-3 h-3 text-amber-400 fill-amber-400"
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-foreground/80 italic leading-relaxed">
+              "{item.comment}"
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FaqBlock({ block }: { block: PageBlock }) {
+  const c = block.content as Record<string, unknown>;
+  const items =
+    (c.items as Array<{ question: string; answer: string }>) || [];
+  const [openIdx, setOpenIdx] = useState<number | null>(0);
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-2.5">
+      <div className="flex items-center gap-2 mb-1">
+        <HelpCircle className="w-4 h-4 text-primary" />
+        <p className="font-dm font-bold text-sm text-foreground">
+          {block.title || "Questions fréquentes (FAQ)"}
+        </p>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, idx) => {
+          const isOpen = openIdx === idx;
+          return (
+            <div
+              key={idx}
+              className="rounded-xl border border-border/40 bg-secondary/30 overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenIdx(isOpen ? null : idx)}
+                className="w-full flex items-center justify-between p-3 text-left text-xs font-bold text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                <span>{item.question}</span>
+                {isOpen ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                )}
+              </button>
+              {isOpen && (
+                <div className="px-3 pb-3 text-xs text-muted-foreground leading-relaxed border-t border-border/30 pt-2">
+                  {item.answer}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TipJarBlock({
+  block,
+  onBuy,
+}: {
+  block: PageBlock;
+  onBuy?: (item: any) => void;
+}) {
+  const c = block.content as Record<string, unknown>;
+  const presetAmounts = (c.amounts as number[]) || [500, 1000, 2500, 5000];
+  const [selectedAmount, setSelectedAmount] = useState<number>(
+    presetAmounts[1] || 1000,
+  );
+  const description =
+    (c.description as string) ||
+    "Soutenez mon travail directement par Orange Money ou MTN MoMo ❤️";
+
+  return (
+    <div className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 via-card to-amber-500/10 p-4 space-y-3">
+      <div className="flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-500 flex items-center justify-center flex-shrink-0">
+          <Heart className="w-5 h-5 fill-rose-500" />
+        </div>
+        <div>
+          <h4 className="font-dm font-bold text-sm text-foreground">
+            {block.title || "Pourboire & Soutien Créateur"}
+          </h4>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {presetAmounts.map((amt) => (
+          <button
+            key={amt}
+            type="button"
+            onClick={() => setSelectedAmount(amt)}
+            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+              selectedAmount === amt
+                ? "border-rose-500 bg-rose-500 text-white shadow-sm"
+                : "border-border/60 bg-background text-foreground hover:border-rose-500/40"
+            }`}
+          >
+            {amt.toLocaleString("fr-FR")} F
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          onBuy?.({
+            id: `tip_${block.id}_${selectedAmount}`,
+            name: `${block.title || "Soutien Créateur"} (${selectedAmount.toLocaleString("fr-FR")} XAF)`,
+            description,
+            price: selectedAmount,
+            currency: "XAF",
+            item_type: "service",
+          })
+        }
+        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-white text-xs font-bold shadow-md hover:opacity-95 transition-opacity flex items-center justify-center gap-1.5"
+      >
+        <Heart className="w-3.5 h-3.5 fill-white" /> Offrir{" "}
+        {selectedAmount.toLocaleString("fr-FR")} FCFA
+      </button>
+    </div>
+  );
 }
 
 // ─── Font mapping ─────────────────────────────────────────────────────────────
 
 const FONT_MAP: Record<string, string> = {
   inter: "'Inter', sans-serif",
+  dm: "'DM Sans', sans-serif",
   "dm-sans": "'DM Sans', sans-serif",
   mono: "'JetBrains Mono', 'Fira Code', monospace",
   playfair: "'Playfair Display', serif",
+  serif: "'Playfair Display', Georgia, serif",
   poppins: "'Poppins', sans-serif",
+  space: "'Space Grotesk', sans-serif",
   "space-grotesk": "'Space Grotesk', sans-serif",
   cabinet: "'Cabinet Grotesk', 'DM Sans', sans-serif",
   lora: "'Lora', serif",
@@ -859,6 +1244,10 @@ const BUTTON_STYLES: Record<string, string> = {
   rounded: "rounded-2xl",
   pill: "rounded-full",
   square: "rounded-lg",
+  sharp: "rounded-none",
+  soft: "rounded-2xl shadow-xs",
+  glass: "rounded-2xl backdrop-blur-md bg-white/15 border border-white/25",
+  neon: "rounded-xl border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]",
   outline: "rounded-2xl border-2 bg-transparent",
   shadow: "rounded-2xl shadow-lg",
 };
@@ -875,6 +1264,7 @@ const PublicProfile = () => {
   const [notFound, setNotFound] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [selectedBlockItem, setSelectedBlockItem] = useState<any | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -914,7 +1304,8 @@ const PublicProfile = () => {
     };
 
     const loadProfile = async () => {
-      const cleanUsername = (username || "").replace(/^@/, "").trim().toLowerCase();
+      const rawUsername = decodeURIComponent(username || "").replace(/^@/, "").trim();
+      const cleanUsername = rawUsername.toLowerCase();
       let profileData: Profile | null = null;
 
       // 1. Try querying by username directly
@@ -926,11 +1317,11 @@ const PublicProfile = () => {
       if (byUser.data) {
         profileData = byUser.data as Profile;
       } else {
-        // 2. Try querying by id directly
+        // 2. Try querying by exact id (preserving case) or lowercase id
         const byId = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", cleanUsername)
+          .eq("id", rawUsername)
           .single();
         if (byId.data) {
           profileData = byId.data as Profile;
@@ -941,7 +1332,8 @@ const PublicProfile = () => {
             const found = all.data.find(
               (p: any) =>
                 (p.username && p.username.toLowerCase() === cleanUsername) ||
-                p.id === cleanUsername
+                p.id === rawUsername ||
+                (p.id && String(p.id).toLowerCase() === cleanUsername),
             );
             if (found) profileData = found as Profile;
           }
@@ -1202,53 +1594,61 @@ const PublicProfile = () => {
       : { background: bgColor || undefined }),
   };
 
+  const layoutStyle = ((profile as any).layout_style as string) || "classic";
+  const publicUrl = `${window.location.origin}/u/${profile.username}`;
+
   return (
     <div className="min-h-screen" style={bgStyle}>
       <div
         className={`min-h-screen ${bgImage ? "bg-black/20 backdrop-blur-[1px]" : !bgColor ? "bg-gradient-to-br from-background via-secondary/30 to-background" : ""}`}
       >
-        <div className="max-w-lg mx-auto pb-12">
-          {/* ── Cover + Avatar header ── */}
-          <div className="relative mb-6">
-            <div className="h-44 w-full bg-gradient-to-br from-primary/30 to-primary/10 overflow-hidden">
-              {profile.cover_url ? (
-                <img
-                  src={profile.cover_url}
-                  alt="Couverture"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/30" />
-              )}
-            </div>
+        <div className="max-w-lg mx-auto pb-12 relative">
+          {/* Floating Top Actions: QR Code Share + Save vCard Contact */}
+          <div className="fixed sm:absolute top-3 right-3 z-30 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                downloadVCard({
+                  displayName: profile.display_name || profile.username,
+                  username: profile.username,
+                  bio: profile.bio,
+                  website: profile.website || publicUrl,
+                })
+              }
+              title="Enregistrer le contact"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/90 backdrop-blur-md border border-border/60 shadow-lg text-xs font-bold text-foreground hover:border-primary/40 hover:scale-105 transition-all"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-primary" />
+              <span className="hidden xs:inline">Contact</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowQRModal(true)}
+              title="Partager & QR Code"
+              className="w-9 h-9 rounded-full bg-card/90 backdrop-blur-md border border-border/60 shadow-lg flex items-center justify-center text-foreground hover:border-primary/40 hover:scale-105 transition-all"
+            >
+              <QrCode className="w-4 h-4 text-primary" />
+            </button>
+          </div>
 
-            {/* Avatar — positioned based on avatar_position */}
-            <div className="px-5">
-              <div
-                className={`flex items-end -mt-10 mb-3 ${
-                  avatarPos === "center"
-                    ? "justify-center"
-                    : avatarPos === "right"
-                      ? "justify-end"
-                      : "justify-between"
-                }`}
-              >
-                <div className="relative">
+          {/* ── Header — Adapts to layout_style ── */}
+          {layoutStyle === "minimal_card" ? (
+            <div className="px-4 pt-14 pb-4">
+              <div className="rounded-3xl border border-border/60 bg-card/90 backdrop-blur-md p-6 shadow-xl text-center space-y-3">
+                <div className="relative inline-block mx-auto">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
                       alt={profile.display_name || ""}
-                      className="w-20 h-20 rounded-full object-cover border-4 border-background shadow-blue"
+                      className="w-24 h-24 rounded-2xl object-cover border-2 border-primary/30 shadow-lg"
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-2xl font-bold border-4 border-background shadow-blue">
-                      {(profile.display_name ||
-                        profile.username ||
-                        "?")[0].toUpperCase()}
+                    <div className="w-24 h-24 rounded-2xl gradient-primary flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-lg">
+                      {(profile.display_name || profile.username || "?")[0].toUpperCase()}
                     </div>
                   )}
                   {profile.is_verified && (
-                    <span className="absolute -bottom-0.5 -right-0.5">
+                    <span className="absolute -bottom-1 -right-1">
                       <VerifiedBadge
                         style={(profile as any).verified_badge_style}
                         size="md"
@@ -1256,60 +1656,195 @@ const PublicProfile = () => {
                     </span>
                   )}
                 </div>
-                {avatarPos !== "center" && profile.website && (
-                  <a
-                    href={profile.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground hover:border-primary/40 transition-colors mb-1"
+                <div>
+                  <h1 className="font-bold text-2xl text-foreground">
+                    {profile.display_name || `@${profile.username}`}
+                  </h1>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    @{profile.username}
+                  </p>
+                </div>
+                {profile.bio && (
+                  <p className="text-sm text-foreground/75 leading-relaxed max-w-sm mx-auto">
+                    {profile.bio}
+                  </p>
+                )}
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadVCard({
+                        displayName: profile.display_name || profile.username,
+                        username: profile.username,
+                        bio: profile.bio,
+                        website: profile.website || publicUrl,
+                      })
+                    }
+                    className="px-4 py-2 rounded-xl gradient-cta text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-sm"
                   >
-                    <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="truncate max-w-[100px]">
-                      {profile.website.replace(/^https?:\/\//, "")}
-                    </span>
-                  </a>
+                    <UserPlus className="w-3.5 h-3.5" /> Ajouter aux contacts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowQRModal(true)}
+                    className="px-3 py-2 rounded-xl border border-border bg-secondary/50 text-xs font-semibold text-foreground flex items-center gap-1.5"
+                  >
+                    <Share2 className="w-3.5 h-3.5" /> Partager
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : layoutStyle === "hero_cover" ? (
+            <div className="relative h-72 w-full overflow-hidden mb-6">
+              {profile.cover_url ? (
+                <img
+                  src={profile.cover_url}
+                  alt="Couverture"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/60 via-indigo-600/40 to-black" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6 text-white">
+                <div className="flex items-center gap-3.5">
+                  <div className="relative flex-shrink-0">
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt={profile.display_name || ""}
+                        className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center text-white text-xl font-bold border-2 border-white">
+                        {(profile.display_name || profile.username || "?")[0].toUpperCase()}
+                      </div>
+                    )}
+                    {profile.is_verified && (
+                      <span className="absolute -bottom-0.5 -right-0.5">
+                        <VerifiedBadge
+                          style={(profile as any).verified_badge_style}
+                          size="sm"
+                        />
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="font-bold text-2xl text-white truncate">
+                      {profile.display_name || `@${profile.username}`}
+                    </h1>
+                    <p className="text-xs text-white/75">@{profile.username}</p>
+                  </div>
+                </div>
+                {profile.bio && (
+                  <p className="text-xs text-white/85 mt-2.5 line-clamp-2 leading-relaxed">
+                    {profile.bio}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="relative mb-6">
+              <div className="h-44 w-full bg-gradient-to-br from-primary/30 to-primary/10 overflow-hidden">
+                {profile.cover_url ? (
+                  <img
+                    src={profile.cover_url}
+                    alt="Couverture"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/30" />
                 )}
               </div>
 
-              {avatarPos === "center" && profile.website && (
-                <div className="flex justify-center mb-2">
-                  <a
-                    href={profile.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground hover:border-primary/40 transition-colors"
-                  >
-                    <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="truncate max-w-[100px]">
-                      {profile.website.replace(/^https?:\/\//, "")}
-                    </span>
-                  </a>
+              {/* Avatar — positioned based on avatar_position */}
+              <div className="px-5">
+                <div
+                  className={`flex items-end -mt-10 mb-3 ${
+                    avatarPos === "center"
+                      ? "justify-center"
+                      : avatarPos === "right"
+                        ? "justify-end"
+                        : "justify-between"
+                  }`}
+                >
+                  <div className="relative">
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt={profile.display_name || ""}
+                        className="w-20 h-20 rounded-full object-cover border-4 border-background shadow-blue"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-2xl font-bold border-4 border-background shadow-blue">
+                        {(profile.display_name ||
+                          profile.username ||
+                          "?")[0].toUpperCase()}
+                      </div>
+                    )}
+                    {profile.is_verified && (
+                      <span className="absolute -bottom-0.5 -right-0.5">
+                        <VerifiedBadge
+                          style={(profile as any).verified_badge_style}
+                          size="md"
+                        />
+                      </span>
+                    )}
+                  </div>
+                  {avatarPos !== "center" && profile.website && (
+                    <a
+                      href={profile.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground hover:border-primary/40 transition-colors mb-1"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="truncate max-w-[100px]">
+                        {profile.website.replace(/^https?:\/\//, "")}
+                      </span>
+                    </a>
+                  )}
                 </div>
-              )}
 
-              <div
-                className={`flex items-center gap-2 flex-wrap ${avatarPos === "center" ? "justify-center" : avatarPos === "right" ? "justify-end" : ""}`}
-              >
-                <h1 className="font-bold text-2xl text-foreground leading-tight">
-                  {profile.display_name || `@${profile.username}`}
-                </h1>
+                {avatarPos === "center" && profile.website && (
+                  <div className="flex justify-center mb-2">
+                    <a
+                      href={profile.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground hover:border-primary/40 transition-colors"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="truncate max-w-[100px]">
+                        {profile.website.replace(/^https?:\/\//, "")}
+                      </span>
+                    </a>
+                  </div>
+                )}
+
+                <div
+                  className={`flex items-center gap-2 flex-wrap ${avatarPos === "center" ? "justify-center" : avatarPos === "right" ? "justify-end" : ""}`}
+                >
+                  <h1 className="font-bold text-2xl text-foreground leading-tight">
+                    {profile.display_name || `@${profile.username}`}
+                  </h1>
+                </div>
+                {profile.username && (
+                  <p
+                    className={`text-sm text-muted-foreground ${avatarPos === "center" ? "text-center" : avatarPos === "right" ? "text-right" : ""}`}
+                  >
+                    @{profile.username}
+                  </p>
+                )}
+                {profile.bio && (
+                  <p
+                    className={`text-sm text-foreground/70 mt-2 leading-relaxed ${avatarPos === "center" ? "text-center" : avatarPos === "right" ? "text-right" : ""}`}
+                  >
+                    {profile.bio}
+                  </p>
+                )}
               </div>
-              {profile.username && (
-                <p
-                  className={`text-sm text-muted-foreground ${avatarPos === "center" ? "text-center" : avatarPos === "right" ? "text-right" : ""}`}
-                >
-                  @{profile.username}
-                </p>
-              )}
-              {profile.bio && (
-                <p
-                  className={`text-sm text-foreground/70 mt-2 leading-relaxed ${avatarPos === "center" ? "text-center" : avatarPos === "right" ? "text-right" : ""}`}
-                >
-                  {profile.bio}
-                </p>
-              )}
             </div>
-          </div>
+          )}
 
           {/* ── Content area ── */}
           <div className="px-4 space-y-3">
@@ -1323,49 +1858,115 @@ const PublicProfile = () => {
               />
             ))}
 
-            {/* Links — apply button_style */}
-            {links.map((link) => {
-              const displayType = getLinkDisplayType(link);
-              if (displayType === "youtube")
-                return <YouTubeBlock key={link.id} link={link} />;
-              if (displayType === "spotify")
-                return <SpotifyBlock key={link.id} link={link} />;
-              if (displayType === "tiktok")
-                return <TikTokBlock key={link.id} link={link} />;
-              return (
-                <a
-                  key={link.id}
-                  href={
-                    link.url?.startsWith("http://") ||
-                    link.url?.startsWith("https://")
-                      ? link.url
-                      : `https://${link.url}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => incrementClick(link.id)}
-                  className={`flex items-center gap-4 p-4 border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group ${btnClass} ${isOutline ? "border-foreground/20 hover:border-primary" : ""}`}
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{
-                      backgroundColor: `${getPlatformColor(link.icon || "website")}18`,
-                    }}
+            {/* Links — apply button_style and optional Bento 2-column grid */}
+            <div
+              className={
+                layoutStyle === "bento"
+                  ? "grid grid-cols-2 gap-2.5"
+                  : "space-y-3"
+              }
+            >
+              {links.map((link, idx) => {
+                const displayType = getLinkDisplayType(link);
+                if (displayType === "youtube")
+                  return (
+                    <div
+                      key={link.id}
+                      className={layoutStyle === "bento" ? "col-span-2" : ""}
+                    >
+                      <YouTubeBlock link={link} />
+                    </div>
+                  );
+                if (displayType === "spotify")
+                  return (
+                    <div
+                      key={link.id}
+                      className={layoutStyle === "bento" ? "col-span-2" : ""}
+                    >
+                      <SpotifyBlock link={link} />
+                    </div>
+                  );
+                if (displayType === "tiktok")
+                  return (
+                    <div
+                      key={link.id}
+                      className={layoutStyle === "bento" ? "col-span-2" : ""}
+                    >
+                      <TikTokBlock link={link} />
+                    </div>
+                  );
+
+                if (layoutStyle === "bento") {
+                  const isFeatured = idx === 0;
+                  return (
+                    <a
+                      key={link.id}
+                      href={
+                        link.url?.startsWith("http://") ||
+                        link.url?.startsWith("https://")
+                          ? link.url
+                          : `https://${link.url}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => incrementClick(link.id)}
+                      className={`${isFeatured ? "col-span-2 flex-row items-center" : "flex-col items-start justify-between min-h-[110px]"} flex gap-3 p-4 border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group ${btnClass}`}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          backgroundColor: `${getPlatformColor(link.icon || "website")}18`,
+                        }}
+                      >
+                        <SocialIcon platform={link.icon || "website"} size={22} />
+                      </div>
+                      <div className="flex-1 min-w-0 w-full">
+                        <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                          {link.title}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {getPlatformLabel(link.icon || "website")}
+                        </p>
+                      </div>
+                    </a>
+                  );
+                }
+
+                return (
+                  <a
+                    key={link.id}
+                    href={
+                      link.url?.startsWith("http://") ||
+                      link.url?.startsWith("https://")
+                        ? link.url
+                        : `https://${link.url}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => incrementClick(link.id)}
+                    className={`flex items-center gap-4 p-4 border border-border/50 bg-card hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group ${btnClass} ${isOutline ? "border-foreground/20 hover:border-primary" : ""}`}
                   >
-                    <SocialIcon platform={link.icon || "website"} size={24} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                      {link.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {getPlatformLabel(link.icon || "website")}
-                    </p>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition-colors flex-shrink-0" />
-                </a>
-              );
-            })}
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{
+                        backgroundColor: `${getPlatformColor(link.icon || "website")}18`,
+                      }}
+                    >
+                      <SocialIcon platform={link.icon || "website"} size={24} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                        {link.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {getPlatformLabel(link.icon || "website")}
+                      </p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition-colors flex-shrink-0" />
+                  </a>
+                );
+              })}
+            </div>
 
             {blocks.length === 0 &&
               links.length === 0 &&
@@ -1377,7 +1978,9 @@ const PublicProfile = () => {
 
             {/* Store Items */}
             {storeItems.length > 0 &&
-              (profile.plan === "premium" || profile.plan === "business") && (
+              (profile.plan === "starter" ||
+                profile.plan === "premium" ||
+                profile.plan === "business") && (
                 <div className="space-y-3 mt-4">
                   <div className="flex items-center gap-2 px-1">
                     <ShoppingBag className="w-4 h-4 text-primary" />
@@ -1387,7 +1990,7 @@ const PublicProfile = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {storeItems.map((item) => {
-                      const clientPrice = Math.round(item.price * 1.07);
+                      const clientPrice = Math.round(item.price * 1.03);
                       const typeIcon =
                         item.item_type === "service" ? (
                           <Briefcase className="w-3 h-3" />
@@ -1471,6 +2074,17 @@ const PublicProfile = () => {
                 </div>
               )}
           </div>
+
+          {/* QR & Share Modal */}
+          <ProfileShareQRModal
+            open={showQRModal}
+            onClose={() => setShowQRModal(false)}
+            username={profile.username}
+            displayName={profile.display_name || profile.username}
+            bio={profile.bio}
+            avatarUrl={profile.avatar_url}
+            website={profile.website}
+          />
 
           {/* Store Payment Modal */}
           {selectedItem && profile && (

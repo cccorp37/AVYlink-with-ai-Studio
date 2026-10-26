@@ -19,10 +19,39 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const queryClient = new QueryClient();
 
+function isPublicPortfolioPath(pathname: string): boolean {
+  if (
+    pathname.startsWith("/u/") ||
+    pathname.startsWith("/@") ||
+    pathname.startsWith("/p/") ||
+    pathname.startsWith("/portfolio/")
+  ) {
+    return true;
+  }
+  const clean = pathname.replace(/^\/+|\/+$/g, "");
+  if (
+    clean &&
+    !clean.includes("/") &&
+    !["dashboard", "admin", "install", "installer"].includes(
+      clean.toLowerCase(),
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 const App = () => {
-  const [splashDone, setSplashDone] = useState(
-    () => sessionStorage.getItem("splashShown") === "true",
-  );
+  const [splashDone, setSplashDone] = useState(() => {
+    if (typeof window !== "undefined") {
+      if (isPublicPortfolioPath(window.location.pathname)) {
+        return true;
+      }
+      return sessionStorage.getItem("splashShown") === "true";
+    }
+    return true;
+  });
+
   const handleSplashComplete = useCallback(() => {
     sessionStorage.setItem("splashShown", "true");
     setSplashDone(true);
@@ -54,10 +83,14 @@ const App = () => {
                       element={<Navigate to="/dashboard/admin" replace />}
                     />
                     <Route path="/u/:username" element={<PublicProfile />} />
-                    <Route path="/@:username" element={<PublicProfile />} />
                     <Route path="/p/:username" element={<PublicProfile />} />
+                    <Route
+                      path="/portfolio/:username"
+                      element={<PublicProfile />}
+                    />
                     <Route path="/install" element={<InstallApp />} />
                     <Route path="/installer" element={<InstallApp />} />
+                    <Route path="/:username" element={<PublicProfile />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>

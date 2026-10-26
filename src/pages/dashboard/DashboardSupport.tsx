@@ -112,9 +112,11 @@ export default function DashboardSupport() {
   }, [user]);
 
   const loadTickets = async () => {
+    if (!user) return;
     const { data } = await supabase
       .from("support_tickets")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setTickets(data || []);
     setLoading(false);

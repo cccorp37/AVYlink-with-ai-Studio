@@ -12,56 +12,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 const InstallApp = () => {
   const navigate = useNavigate();
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [isSafari, setIsSafari] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true);
-    }
-
-    // Detect iOS
     const ua = navigator.userAgent;
-    const ios =
-      /iPad|iPhone|iPod/.test(ua) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    setIsIOS(ios);
     setIsSafari(/Safari/.test(ua) && !/Chrome/.test(ua));
-
-    // Listen for install prompt
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-
-    // Listen for app installed
-    window.addEventListener("appinstalled", () => setIsInstalled(true));
-
-    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setIsInstalled(true);
-    }
-    setDeferredPrompt(null);
-  };
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -84,9 +45,12 @@ const InstallApp = () => {
           <div className="flex justify-center">
             <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden shadow-blue-lg border-4 border-background">
               <img
-                src="/icon-192.jpg"
+                src="/pwa-192x192.png"
                 alt="AvyLink"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/icon-192.jpg";
+                }}
               />
             </div>
           </div>
@@ -118,7 +82,7 @@ const InstallApp = () => {
                 AvyLink est déjà sur votre écran d'accueil.
               </p>
             </motion.div>
-          ) : deferredPrompt ? (
+          ) : isInstallable ? (
             /* Native install prompt available (Chrome, Edge, Samsung...) */
             <motion.div
               initial={{ opacity: 0 }}
@@ -126,7 +90,7 @@ const InstallApp = () => {
               className="space-y-4"
             >
               <Button
-                onClick={handleInstall}
+                onClick={install}
                 size="lg"
                 className="w-full gradient-cta text-primary-foreground rounded-2xl font-bold text-base py-7 gap-3"
               >
@@ -159,7 +123,7 @@ const InstallApp = () => {
                     {
                       step: 2,
                       icon: <Plus className="w-5 h-5" />,
-                      text: "\"Sur l'écran d'accueil\"",
+                      text: '"Sur l\'écran d\'accueil"',
                       sub: "Faites défiler vers le bas pour trouver l'option",
                     },
                     {
@@ -210,7 +174,7 @@ const InstallApp = () => {
                       step: 2,
                       icon: <Download className="w-5 h-5" />,
                       text: '"Installer l\'application"',
-                      sub: "Ou \"Ajouter à l'écran d'accueil\"",
+                      sub: 'Ou "Ajouter à l\'écran d\'accueil"',
                     },
                     {
                       step: 3,

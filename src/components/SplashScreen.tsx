@@ -1,50 +1,52 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
   const [visible, setVisible] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleEnded = () => {
+    const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(onComplete, 500); // wait for fade-out
-    };
+      setTimeout(onComplete, 300);
+    }, 850);
 
-    video.addEventListener("ended", handleEnded);
-
-    // Fallback timeout in case video fails to load
-    const fallback = setTimeout(() => {
-      setVisible(false);
-      setTimeout(onComplete, 500);
-    }, 8000);
-
-    return () => {
-      video.removeEventListener("ended", handleEnded);
-      clearTimeout(fallback);
-    };
+    return () => clearTimeout(timer);
   }, [onComplete]);
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <video
-            ref={videoRef}
-            src="/splash.mp4"
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-contain max-w-md"
-          />
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="flex flex-col items-center gap-3"
+          >
+            <div className="w-20 h-20 rounded-3xl overflow-hidden shadow-blue-lg border-4 border-card">
+              <img
+                src="/pwa-192x192.png"
+                alt="AvyLink"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/icon-192.jpg";
+                }}
+              />
+            </div>
+            <div className="text-center">
+              <h1 className="font-dm font-black text-2xl text-foreground tracking-tight">
+                Avy<span className="text-gradient">Link</span>
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Ton univers en un seul lien
+              </p>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

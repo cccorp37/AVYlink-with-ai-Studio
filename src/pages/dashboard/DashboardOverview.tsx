@@ -16,9 +16,11 @@ import {
   BarChart3,
   LayoutTemplate,
   Shield,
+  QrCode,
   type LucideIcon,
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useToast } from "@/hooks/use-toast";
 import { firestoreDB as supabase } from "@/lib/db";
 import {
   BarChart,
@@ -34,6 +36,7 @@ import {
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
+import { ProfileShareQRModal } from "@/components/ProfileShareQRModal";
 import type { Tables } from "@/lib/types";
 
 type Profile = Tables<"profiles">;
@@ -189,6 +192,7 @@ function getLast7Days() {
 
 export default function DashboardOverview({ profile }: Props) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { isAdmin } = useAdmin();
   const [links, setLinks] = useState<ProfileLink[]>([]);
   const [totalViews, setTotalViews] = useState(0);
@@ -196,6 +200,7 @@ export default function DashboardOverview({ profile }: Props) {
   const [viewData, setViewData] = useState<{ day: string; views: number }[]>(
     [],
   );
+  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -270,22 +275,34 @@ export default function DashboardOverview({ profile }: Props) {
           </p>
         </div>
         {profile?.username && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() =>
-              navigator.clipboard.writeText(
-                `${window.location.origin}/u/${profile.username}`,
-              )
-            }
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-blue text-sm font-medium text-foreground hover:shadow-blue transition-all self-start"
-          >
-            <Link2 className="w-4 h-4 text-primary" />
-            <span className="truncate">avylink.app/u/{profile.username}</span>
-            <span className="text-xs text-primary font-semibold ml-1">
-              Copier
-            </span>
-          </motion.button>
+          <div className="flex items-center gap-2 self-start flex-wrap">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  `${window.location.origin}/u/${profile.username}`,
+                );
+                toast({ title: "✅ Lien du profil copié !" });
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-blue text-sm font-medium text-foreground hover:shadow-blue transition-all"
+            >
+              <Link2 className="w-4 h-4 text-primary" />
+              <span className="truncate">avylink.app/u/{profile.username}</span>
+              <span className="text-xs text-primary font-semibold ml-1">
+                Copier
+              </span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowQRModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:opacity-95 transition-all"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>QR & Carte</span>
+            </motion.button>
+          </div>
         )}
       </motion.div>
 
@@ -641,12 +658,25 @@ export default function DashboardOverview({ profile }: Props) {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/dashboard/abonnement")}
               className="px-6 py-2.5 bg-white text-primary font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all flex-shrink-0"
             >
               Voir les plans ✨
             </motion.button>
           </div>
         </motion.div>
+      )}
+
+      {profile && (
+        <ProfileShareQRModal
+          open={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          username={profile.username}
+          displayName={profile.display_name || profile.username}
+          bio={profile.bio}
+          avatarUrl={profile.avatar_url}
+          website={profile.website}
+        />
       )}
     </div>
   );

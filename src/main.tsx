@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "@/hooks/usePWAInstall";
 import { registerSW } from "virtual:pwa-register";
 
 // Register Service Worker for PWA (offline caching, mini-app installation)

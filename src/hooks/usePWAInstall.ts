@@ -1,67 +1,89 @@
 import { useEffect, useState } from "react";
 
-interface BeforeInstallPromptEvent extends Event {
+export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+// Global singleton so beforeinstallprompt is never lost during SPA navigation
+let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
+let globalIsInstalled = false;
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
+  listeners.forEach((cb) => cb());
+}
+
+if (typeof window !== "undefined") {
+  globalIsInstalled =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone ===
+      true;
+
+  window.addEventListener("beforeinstallprompt", (e: Event) => {
+    e.preventDefault();
+    globalDeferredPrompt = e as BeforeInstallPromptEvent;
+    notifyListeners();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    globalIsInstalled = true;
+    globalDeferredPrompt = null;
+    notifyListeners();
+  });
+}
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+    useState<BeforeInstallPromptEvent | null>(() => globalDeferredPrompt);
+  const [isInstalled, setIsInstalled] = useState<boolean>(
+    () => globalIsInstalled,
+  );
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Detect standalone mode (already installed)
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone ===
         true;
-    setIsInstalled(isStandalone);
+    if (isStandalone) {
+      globalIsInstalled = true;
+    }
 
-    // Detect iOS devices
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOSDevice =
       /iphone|ipad|ipod/.test(userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     setIsIOS(isIOSDevice);
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    const sync = () => {
+      setDeferredPrompt(globalDeferredPrompt);
+      setIsInstalled(globalIsInstalled);
     };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
+    sync();
+    listeners.add(sync);
 
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt,
-      );
-      window.removeEventListener("appinstalled", handleAppInstalled);
+      listeners.delete(sync);
     };
   }, []);
 
   const install = async () => {
-    if (!deferredPrompt) return false;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    const promptEvent = globalDeferredPrompt || deferredPrompt;
+    if (!promptEvent) return false;
+    await promptEvent.prompt();
+    const { outcome } = await promptEvent.userChoice;
     if (outcome === "accepted") {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
+      globalIsInstalled = true;
+      globalDeferredPrompt = null;
+      notifyListeners();
       return true;
     }
     return false;
   };
 
   return {
-    isInstallable: !!deferredPrompt,
+    isInstallable: !!(globalDeferredPrompt || deferredPrompt),
     isInstalled,
     isIOS,
     install,

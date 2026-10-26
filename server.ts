@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import crypto from "crypto";
 import { PaymentOperation } from "@hachther/mesomb";
@@ -22,7 +21,31 @@ import {
   where as clientWhere,
 } from "firebase/firestore";
 import nodemailer from "nodemailer";
-import firebaseConfig from "./firebase-applet-config.json";
+
+const PLATFORM_FEE_RATE = 0.03;
+const MESOMB_WITHDRAWAL_FEE_RATE = 0.02;
+
+const DEFAULT_FIREBASE_CONFIG = {
+  projectId: "peerless-gateway-8lkqp",
+  appId: "1:929583632653:web:5a8344a7c8d82a28fe2044",
+  apiKey: "AIzaSyDFDVqBfnx3thiP67WKgfHFbY-ACyg52j0",
+  authDomain: "peerless-gateway-8lkqp.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-avylinkhub-f682e20c-ebb2-4c96-9736-52a164f3f490",
+  storageBucket: "peerless-gateway-8lkqp.firebasestorage.app",
+  messagingSenderId: "929583632653",
+};
+
+function loadFirebaseConfig() {
+  try {
+    const cfgPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(cfgPath)) {
+      return JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
+    }
+  } catch (_) {}
+  return DEFAULT_FIREBASE_CONFIG;
+}
+
+const firebaseConfig = loadFirebaseConfig();
 
 // Initialize Firebase Admin for auth tokens
 if (!getAdminApps().length) {
@@ -408,12 +431,28 @@ async function handlePaymentFulfillment({
           updated_at: FieldValue.serverTimestamp(),
         });
       }
+      await safeCollectionAdd("subscriptions", {
+        user_id: userId || "anonymous",
+        profile_id: profId,
+        plan: metadata.plan,
+        billing_cycle: metadata.billing_cycle || "monthly",
+        promo_code: metadata.promo_code || null,
+        amount: Math.round(amount),
+        currency: currency || "XAF",
+        payment_method: service,
+        phone_number: phone,
+        transaction_id: txnId,
+        reference: externalId,
+        status: "active",
+        started_at: FieldValue.serverTimestamp(),
+        created_at: FieldValue.serverTimestamp(),
+      });
     } catch (planErr) {
       console.warn("Plan upgrade warning:", planErr);
     }
   }
 
-  // 2. Store Order creation (E-commerce / Boutique)
+  // 2. Store Order creation (E-commerce / Boutique / Tip Jar)
   if (type === "order" && metadata?.item_id) {
     try {
       await safeCollectionAdd("orders", {
@@ -438,6 +477,7 @@ async function handlePaymentFulfillment({
 
   // 3. Wallet Credit (Seller's wallet if store item, or User's wallet if deposit)
   let targetWalletId = walletId;
+  let sellerUserId: string | null = null;
   if (type === "order" && metadata?.seller_profile_id) {
     try {
       const sellerProfileSnap = await db
@@ -445,7 +485,7 @@ async function handlePaymentFulfillment({
         .doc(metadata.seller_profile_id)
         .get();
       if (sellerProfileSnap.exists) {
-        const sellerUserId = sellerProfileSnap.data()?.user_id;
+        sellerUserId = sellerProfileSnap.data()?.user_id || null;
         if (sellerUserId) {
           const sellerWalletQuery = await db
             .collection("wallets")
@@ -468,16 +508,38 @@ async function handlePaymentFulfillment({
     }
   }
 
-  if (targetWalletId) {
+  if (targetWalletId && (type === "order" || type === "wallet_topup")) {
     try {
       const walletDoc = await db.collection("wallets").doc(targetWalletId).get();
       if (walletDoc.exists) {
         const currentBalance = walletDoc.data()?.balance || 0;
-        const netAmount = Math.round(amount * (1 - PLATFORM_FEE_RATE));
+        const netAmount =
+          type === "order"
+            ? Math.round(amount * (1 - PLATFORM_FEE_RATE))
+            : Math.round(amount);
         await safeDocUpdate("wallets", targetWalletId, {
           balance: currentBalance + netAmount,
           updated_at: FieldValue.serverTimestamp(),
         });
+
+        // Record sale_credit transaction for the seller so it appears in DashboardWallet
+        if (type === "order" && sellerUserId) {
+          await safeDocSet("transactions", `txn_sale_${Date.now()}`, {
+            id: `txn_sale_${Date.now()}`,
+            wallet_id: targetWalletId,
+            user_id: sellerUserId,
+            type: "sale_credit",
+            amount: netAmount,
+            currency: currency || "XAF",
+            status: "success",
+            reference: externalId,
+            payment_method: service,
+            phone_number: phone,
+            description: `Vente : ${metadata?.item_name || "Article"} (${metadata?.buyer_name || "Client"})`,
+            created_at: FieldValue.serverTimestamp(),
+            processed_at: FieldValue.serverTimestamp(),
+          });
+        }
       }
     } catch (err) {
       console.warn("Wallet credit error:", err);
@@ -486,14 +548,27 @@ async function handlePaymentFulfillment({
 }
 
 export const app = express();
+let isServerInitialized = false;
 
 export async function startServer(options: { listen?: boolean } = {}) {
   const { listen = true } = options;
   const PORT = Number(process.env.PORT) || 3000;
 
+  if (isServerInitialized) {
+    if (listen) {
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`AvyLink Server running on http://0.0.0.0:${PORT}`);
+      });
+    }
+    return;
+  }
+  isServerInitialized = true;
+
   app.use(cors());
 
-  const uploadsDir = path.join(process.cwd(), "uploads");
+  const uploadsDir = process.env.VERCEL
+    ? path.join("/tmp", "uploads")
+    : path.join(process.cwd(), "uploads");
   if (!fs.existsSync(uploadsDir)) {
     try {
       fs.mkdirSync(uploadsDir, { recursive: true });
@@ -508,7 +583,7 @@ export async function startServer(options: { listen?: boolean } = {}) {
       verify: (req: any, _res, buf) => {
         req.rawBody = buf.toString();
       },
-    })
+    }),
   );
 
   // 1. Health check
@@ -892,6 +967,11 @@ export async function startServer(options: { listen?: boolean } = {}) {
       const { fileData, fileName } = req.body;
       if (!fileData) {
         return res.status(400).json({ error: "Aucune donnée fournie" });
+      }
+
+      // On serverless (Vercel), return the persistent Data URL directly because /tmp is ephemeral across lambdas
+      if (process.env.VERCEL) {
+        return res.json({ url: fileData, success: true });
       }
 
       const matches = typeof fileData === "string" ? fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/) : null;
@@ -1498,14 +1578,15 @@ export async function startServer(options: { listen?: boolean } = {}) {
   app.post("/api/mesomb/webhook", handleWebhook);
   app.post("/api/mesomb-webhook", handleWebhook);
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Vite middleware for development (only when not on Vercel)
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
@@ -1513,7 +1594,7 @@ export async function startServer(options: { listen?: boolean } = {}) {
     });
   }
 
-  if (listen) {
+  if (listen && !process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`AvyLink Server running on http://0.0.0.0:${PORT}`);
     });
@@ -1525,3 +1606,4 @@ export default app;
 if (!process.env.VERCEL) {
   startServer();
 }
+

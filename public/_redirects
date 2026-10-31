@@ -1,0 +1,5 @@
+# API routes handled by Netlify Functions
+/api/*  /.netlify/functions/api/:splat  200!
+
+# SPA & Public Portfolio fallback (static files like manifest.webmanifest and sw.js are served automatically first)
+/*  /index.html  200

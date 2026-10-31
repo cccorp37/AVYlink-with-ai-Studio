@@ -31,7 +31,7 @@ export default defineConfig(() => ({
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api/, /^\/~oauth/, /^\/uploads/],
+        navigateFallbackDenylist: [/^\/api/, /^\/\.netlify/, /^\/~oauth/, /^\/uploads/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff2}"],
         runtimeCaching: [
           {

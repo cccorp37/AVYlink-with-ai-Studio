@@ -549,13 +549,19 @@ async function handlePaymentFulfillment({
 
 export const app = express();
 let isServerInitialized = false;
+export const isServerless = Boolean(
+  process.env.VERCEL ||
+    process.env.NETLIFY ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.LAMBDA_TASK_ROOT,
+);
 
 export async function startServer(options: { listen?: boolean } = {}) {
   const { listen = true } = options;
   const PORT = Number(process.env.PORT) || 3000;
 
   if (isServerInitialized) {
-    if (listen) {
+    if (listen && !isServerless) {
       app.listen(PORT, "0.0.0.0", () => {
         console.log(`AvyLink Server running on http://0.0.0.0:${PORT}`);
       });
@@ -566,7 +572,7 @@ export async function startServer(options: { listen?: boolean } = {}) {
 
   app.use(cors());
 
-  const uploadsDir = process.env.VERCEL
+  const uploadsDir = isServerless
     ? path.join("/tmp", "uploads")
     : path.join(process.cwd(), "uploads");
   if (!fs.existsSync(uploadsDir)) {
@@ -969,8 +975,8 @@ export async function startServer(options: { listen?: boolean } = {}) {
         return res.status(400).json({ error: "Aucune donnée fournie" });
       }
 
-      // On serverless (Vercel), return the persistent Data URL directly because /tmp is ephemeral across lambdas
-      if (process.env.VERCEL) {
+      // On serverless (Vercel / Netlify), return the persistent Data URL directly because /tmp is ephemeral across lambdas
+      if (isServerless) {
         return res.json({ url: fileData, success: true });
       }
 
@@ -1578,15 +1584,15 @@ export async function startServer(options: { listen?: boolean } = {}) {
   app.post("/api/mesomb/webhook", handleWebhook);
   app.post("/api/mesomb-webhook", handleWebhook);
 
-  // Vite middleware for development (only when not on Vercel)
-  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  // Vite middleware for development (only when not on Vercel / Netlify serverless)
+  if (process.env.NODE_ENV !== "production" && !isServerless) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else if (!process.env.VERCEL) {
+  } else if (!isServerless) {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
@@ -1594,7 +1600,7 @@ export async function startServer(options: { listen?: boolean } = {}) {
     });
   }
 
-  if (listen && !process.env.VERCEL) {
+  if (listen && !isServerless) {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`AvyLink Server running on http://0.0.0.0:${PORT}`);
     });
@@ -1603,7 +1609,7 @@ export async function startServer(options: { listen?: boolean } = {}) {
 
 export default app;
 
-if (!process.env.VERCEL) {
+if (!isServerless) {
   startServer();
 }
 
